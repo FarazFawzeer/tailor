@@ -45,19 +45,22 @@ class StaffController extends Controller
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
+
+            // This is "User Name" but saved in users.email column
+            'email'    => ['required', 'string', 'max:255', 'unique:users,email'],
+
             'password' => ['required', 'string', 'min:6', 'confirmed'],
             'role'     => ['required', 'in:' . implode(',', $this->staffRoles())],
 
             'phone'    => ['nullable', 'string', 'max:50'],
             'nic'      => ['nullable', 'string', 'max:50'],
             'address'  => ['nullable', 'string'],
-            'is_active'=> ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
 
         $user = User::create([
             'name' => $data['name'],
-            'email'=> $data['email'],
+            'email' => $data['email'], // stores username text in email column
             'password' => Hash::make($data['password']),
         ]);
 
@@ -78,7 +81,7 @@ class StaffController extends Controller
                 'data' => [
                     'user_id' => $user->id,
                     'name' => $user->name,
-                    'email' => $user->email,
+                    'email' => $user->email, // contains username text
                     'role' => $data['role'],
                 ]
             ]);
@@ -106,12 +109,12 @@ class StaffController extends Controller
             'phone'    => ['nullable', 'string', 'max:50'],
             'nic'      => ['nullable', 'string', 'max:50'],
             'address'  => ['nullable', 'string'],
-            'is_active'=> ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
 
         $update = [
             'name' => $data['name'],
-            'email'=> $data['email'],
+            'email' => $data['email'],
         ];
 
         if (!empty($data['password'])) {

@@ -29,9 +29,9 @@
                                 <?php echo csrf_field(); ?>
 
                                 <div class="mb-3">
-                                    <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" id="email" name="email"
-                                        value="<?php echo e(old('email')); ?>" placeholder="Enter your email" required>
+                                    <label for="email" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="email" name="email"
+                                        value="<?php echo e(old('email')); ?>" placeholder="Enter your username" required>
                                     <?php $__errorArgs = ['email'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :

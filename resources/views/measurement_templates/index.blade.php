@@ -9,7 +9,7 @@
                 <h5 class="card-title mb-0">Measurement Templates</h5>
                 <p class="card-subtitle">Templates for each dress type (fields inside template).</p>
             </div>
-            <a href="{{ route('measurement-templates.create') }}" class="btn btn-primary">+ Add</a>
+            <a href="{{ route('measurement-templates.create') }}" class="btn btn-primary">+ Add Template</a>
         </div>
 
         <div class="card-body">

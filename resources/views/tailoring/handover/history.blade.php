@@ -32,9 +32,10 @@
 
         <div class="card-body">
             @if($item->completed_at)
-                <div class="alert alert-success">
-                    ✅ Completed on <b>{{ $item->completed_at?->format('d M Y, h:i A') }}</b>
-                </div>
+              <div class="alert alert-success">
+    ✅ Completed on
+    <b>{{ $item->completed_at ? \Carbon\Carbon::parse($item->completed_at)->format('d M Y, h:i A') : '-' }}</b>
+</div>
             @else
                 <div class="alert alert-secondary">
                     ⏳ Not completed yet. Current Stage: <b>{{ $item->stage?->name ?? 'N/A' }}</b>
@@ -81,7 +82,7 @@
             </div>
 
             <div class="d-flex justify-content-end">
-                <a href="{{ route('tailoring.handover.index') }}" class="btn btn-secondary">Back</a>
+                <a href="{{ route('tailoring.jobs.index') }}" class="btn btn-secondary">Back</a>
             </div>
         </div>
     </div>

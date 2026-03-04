@@ -21,7 +21,8 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            // This is now "User Name" but stored in email column
+            'email' => 'required|string|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:6|confirmed',
             'image_path' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
@@ -46,7 +47,4 @@ class ProfileController extends Controller
 
         return redirect()->route('admin.profile.edit')->with('success', 'Profile updated successfully!');
     }
-
-
-   
 }

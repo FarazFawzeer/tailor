@@ -3,6 +3,13 @@
 @section('content')
     @include('layouts.partials.page-title', ['title' => 'Admin', 'subtitle' => 'Create'])
 
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
 
     <div class="card">
         <div class="card-header">
@@ -10,55 +17,70 @@
         </div>
 
         <div class="card-body">
-            <div id="message"></div> {{-- Success / Error messages --}}
+            <div id="message"></div>
 
             <form id="createUserForm" action="{{ route('admin.users.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
-                {{-- Name + Email in same row --}}
+                {{-- Name + Username --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="name" class="form-label">Full Name</label>
+                        <label for="name" class="form-label">
+                            Full Name <span class="required-star">*</span>
+                        </label>
                         <input type="text" id="name" name="name" class="form-control" value="{{ old('name') }}"
                             placeholder="Ex: John Doe" required>
                     </div>
+
+
                     <div class="col-md-6 mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" id="email" name="email" class="form-control" value="{{ old('email') }}"
-                            placeholder="Ex: admin@gmail.com" required>
+                        <label for="email" class="form-label">
+                            User Name <span class="required-star">*</span>
+                        </label>
+                        <input type="text" id="email" name="email" class="form-control" value="{{ old('email') }}"
+                            placeholder="Ex: john_doe" required>
                     </div>
+
                 </div>
 
-                {{-- Password + Confirm Password in same row --}}
+                {{-- Password + Confirm Password --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="password" class="form-label">Password</label>
+                        <label for="password" class="form-label">
+                            Password <span class="required-star">*</span>
+                        </label>
                         <input type="password" id="password" name="password" class="form-control" placeholder="Password"
                             required>
                     </div>
+
                     <div class="col-md-6 mb-3">
-                        <label for="password_confirmation" class="form-label">Re-enter Password</label>
+                        <label for="password_confirmation" class="form-label">
+                            Re-enter Password <span class="required-star">*</span>
+                        </label>
                         <input type="password" id="password_confirmation" name="password_confirmation"
                             placeholder="Re-enter Password" class="form-control" required>
                     </div>
                 </div>
 
-                {{-- Type + Profile Image in same row --}}
+                {{-- Type + Profile Image --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="type" class="form-label">User Type</label>
+                        <label for="type" class="form-label">
+                            User Type <span class="required-star">*</span>
+                        </label>
                         <select id="type" name="type" class="form-select" required>
                             <option value="">Select Type</option>
                             <option value="Super Admin" {{ old('type') == 'Super Admin' ? 'selected' : '' }}>Super Admin
                             </option>
                             <option value="Admin" {{ old('type') == 'Admin' ? 'selected' : '' }}>Admin</option>
-                            <option value="Tour Assistant" {{ old('type') == 'Tour Assistant' ? 'selected' : '' }}>Tour
-                                Assitant</option>
-                            <option value="Staff" {{ old('type') == 'Staff' ? 'selected' : '' }}>Staff</option>
+                         
                         </select>
                     </div>
+
                     <div class="col-md-6 mb-3">
-                        <label for="image_path" class="form-label">Profile Image</label>
+                        <label for="image_path" class="form-label">
+                            Profile Image
+                        </label>
                         <input type="file" id="image_path" name="image_path" class="form-control" accept="image/*">
                     </div>
                 </div>
@@ -70,7 +92,6 @@
             </form>
         </div>
     </div>
-
 
     <script>
         document.getElementById('createUserForm').addEventListener('submit', function(e) {
@@ -86,9 +107,14 @@
                         "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
                     }
                 })
-                .then(response => response.json())
+                .then(async (response) => {
+                    const data = await response.json();
+                    if (!response.ok) throw data;
+                    return data;
+                })
                 .then(data => {
                     let messageBox = document.getElementById('message');
+
                     if (data.success) {
                         messageBox.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
                         form.reset();
@@ -97,14 +123,18 @@
                             messageBox.innerHTML = "";
                         }, 3000);
                     } else {
-                        // show validation errors
                         let errors = Object.values(data.errors).flat().join('<br>');
                         messageBox.innerHTML = `<div class="alert alert-danger">${errors}</div>`;
                     }
                 })
                 .catch(error => {
-                    document.getElementById('message').innerHTML =
-                        `<div class="alert alert-danger">Error: ${error}</div>`;
+                    let messageBox = document.getElementById('message');
+                    if (error && error.errors) {
+                        let errors = Object.values(error.errors).flat().join('<br>');
+                        messageBox.innerHTML = `<div class="alert alert-danger">${errors}</div>`;
+                    } else {
+                        messageBox.innerHTML = `<div class="alert alert-danger">Something went wrong!</div>`;
+                    }
                 });
         });
     </script>

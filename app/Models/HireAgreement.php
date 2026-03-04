@@ -20,6 +20,10 @@ class HireAgreement extends Model
         'notes',
         'created_by',
         'returned_by',
+        'deposit_received',
+        'amount_paid',
+        'payment_method',
+        'payment_reference',
     ];
 
     protected $casts = [

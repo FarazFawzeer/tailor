@@ -69,6 +69,21 @@ Route::middleware(['auth', 'role:super_admin|admin'])->group(function () {
 
 Route::middleware(['auth'])->prefix('tailoring')->name('tailoring.')->group(function () {
 
+    Route::get('jobs/create-wizard', [JobController::class, 'createWizard'])->name('jobs.createWizard');
+    Route::post('jobs/store-wizard', [JobController::class, 'storeWizard'])->name('jobs.storeWizard');
+
+    // ✅ Wizard edit/update (NEW)
+    Route::get('jobs/{job}/edit-wizard', [JobController::class, 'editWizard'])->name('jobs.editWizard');
+    Route::put('jobs/{job}/update-wizard', [JobController::class, 'updateWizard'])->name('jobs.updateWizard');
+
+    Route::get('reports/stages', [\App\Http\Controllers\Tailoring\TailoringReportController::class, 'stages'])
+        ->name('reports.stages');
+
+    Route::get('reports/staff', [\App\Http\Controllers\Tailoring\TailoringReportController::class, 'staff'])
+        ->name('reports.staff');
+
+
+
     // Job screens: super_admin/admin/front_desk can create jobs
     Route::middleware(['role:super_admin|admin|front_desk'])->group(function () {
         Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
@@ -114,10 +129,10 @@ Route::middleware(['auth'])->prefix('tailoring')->name('tailoring.')->group(func
         ->name('handover.history');
 
     // Group-based handover (user-friendly)
-    Route::get('/tailoring/handover/group/{groupId}', [HandoverController::class, 'createGroup'])
+    Route::get('handover/group/{groupId}', [HandoverController::class, 'createGroup'])
         ->name('handover.group.create');
 
-    Route::post('/tailoring/handover/group/{groupId}', [HandoverController::class, 'storeGroup'])
+    Route::post('handover/group/{groupId}', [HandoverController::class, 'storeGroup'])
         ->name('handover.group.store');
 
 
@@ -131,6 +146,14 @@ Route::middleware(['auth'])->prefix('tailoring')->name('tailoring.')->group(func
     Route::get('/delivery/{job}/print', [DeliveryController::class, 'print'])->name('delivery.print');
 });
 
+Route::delete('/tailoring/jobs/{job}', [JobController::class, 'destroy'])
+    ->name('tailoring.jobs.destroy');
+
+Route::get('tailoring/jobs/{job}/invoice', [JobController::class, 'invoicePdf'])
+    ->name('tailoring.jobs.invoicePdf');
+// small helper api: get template fields
+Route::get('measurement-templates/{template}/fields', [MeasurementTemplateController::class, 'fieldsJson'])
+    ->name('measurement-templates.fields.json');
 
 Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring')->group(function () {
 
@@ -143,7 +166,7 @@ Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring
 
     Route::delete('/items/image/{image}', [HireItemController::class, 'deleteImage'])->name('hiring.items.images.destroy');
 
-
+    Route::get('/items/{hire_item}', [HireItemController::class, 'show'])->name('hiring.items.show');
     // Agreements
     Route::get('/agreements', [HireAgreementController::class, 'index'])->name('hiring.agreements.index');
     Route::get('/agreements/create', [HireAgreementController::class, 'create'])->name('hiring.agreements.create');
@@ -157,7 +180,17 @@ Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring
     // AJAX item scan by code
     Route::post('/agreements/find-item', [HireAgreementController::class, 'findItemByCode'])->name('hiring.agreements.find_item');
 
-  // Availability Dashboard + Reports
+
+    Route::get('/hiring/agreements/{hire_agreement}/edit', [HireAgreementController::class, 'edit'])->name('hiring.agreements.edit');
+    Route::put('/hiring/agreements/{hire_agreement}', [HireAgreementController::class, 'update'])->name('hiring.agreements.update');
+
+    Route::delete('/agreements/delete/{hire_agreement}', [HireAgreementController::class, 'destroy'])
+        ->name('hiring.agreements.destroy');
+
+        Route::get('hiring/agreements/{hire_agreement}/invoice', [\App\Http\Controllers\Hiring\HireAgreementController::class, 'invoice'])
+    ->name('hiring.agreements.invoice');
+
+    // Availability Dashboard + Reports
     Route::get('/availability', [AvailabilityReportController::class, 'index'])->name('hiring.availability.index');
 
     // Optional: separate pages (if you want)
@@ -165,6 +198,8 @@ Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring
 
     Route::get('/availability/upcoming', [AvailabilityReportController::class, 'upcomingReturns'])->name('hiring.availability.upcoming');
 
+    Route::get('/reports/sales', [\App\Http\Controllers\Hiring\HiringSalesReportController::class, 'index'])
+    ->name('hiring.reports.sales');
 });
 
 Route::group(['prefix' => '/', 'middleware' => 'auth'], function () {
@@ -187,7 +222,9 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 
 Route::middleware('auth')->group(function () {
-    Route::get('/', function () {
-        return view('index'); // create resources/views/dashboard.blade.php
-    });
+    // Route::get('/', function () {
+    //     return view('index'); // create resources/views/dashboard.blade.php
+    // });
+    Route::get('/', [ProductionDashboardController::class, 'index'])
+        ->name('production.dashboard');
 });

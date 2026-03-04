@@ -29,4 +29,9 @@ class HireItem extends Model
     {
         return $this->hasMany(HireItemImage::class);
     }
+
+    public function variants()
+    {
+        return $this->hasMany(\App\Models\HireItemVariant::class);
+    }
 }

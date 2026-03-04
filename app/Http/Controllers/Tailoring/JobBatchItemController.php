@@ -31,6 +31,8 @@ class JobBatchItemController extends Controller
             'qty' => (int)$data['qty'],
             'per_piece_measurement' => (bool)($data['per_piece_measurement'] ?? false),
             'notes' => $data['notes'] ?? null,
+                'current_stage_id' => 1,
+
         ]);
 
         $item->load(['dressType', 'measurementTemplate']);

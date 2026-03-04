@@ -32,7 +32,7 @@
                     </div>
 
                     <!-- Notification -->
-                    <div class="dropdown topbar-item">
+                    {{-- <div class="dropdown topbar-item">
                          <button type="button" class="topbar-button position-relative"
                               id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
                               aria-expanded="false">
@@ -141,7 +141,7 @@
                                              class="bx bx-right-arrow-alt ms-1"></i></a>
                               </div>
                          </div>
-                    </div>
+                    </div> --}}
 
                     <!-- User -->
                     <div class="dropdown topbar-item">

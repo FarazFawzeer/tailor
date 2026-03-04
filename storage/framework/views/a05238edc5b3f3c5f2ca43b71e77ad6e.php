@@ -3,13 +3,25 @@
 <?php $__env->startSection('content'); ?>
     <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Customers', 'subtitle' => 'Create'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
+
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">New Customer</h5>
         </div>
 
         <div class="card-body">
-            <div id="message"></div> 
+            <div id="message"></div>
+
+            <small class="text-muted d-block mb-3">
+                Fields marked with <span class="required-star">*</span> are required.
+            </small>
 
             <form id="createCustomerForm" action="<?php echo e(route('customers.store')); ?>" method="POST">
                 <?php echo csrf_field(); ?>
@@ -17,9 +29,11 @@
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="full_name" class="form-label">Full Name</label>
+                        <label for="full_name" class="form-label">
+                            Full Name <span class="required-star">*</span>
+                        </label>
                         <input type="text" id="full_name" name="full_name" class="form-control"
-                            value="<?php echo e(old('full_name')); ?>" placeholder="Ex: Ahmed " required>
+                            value="<?php echo e(old('full_name')); ?>" placeholder="Ex: Ahmed" required>
                     </div>
 
                     <div class="col-md-6 mb-3">
@@ -61,7 +75,7 @@
                 
                 <div class="d-flex justify-content-end gap-2">
                     <a href="<?php echo e(route('customers.index')); ?>" class="btn btn-secondary">Back</a>
-                    <button type="submit" class="btn btn-primary">Create Customer</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
                 </div>
             </form>
         </div>
@@ -85,7 +99,6 @@
                 .then(async response => {
                     const data = await response.json().catch(() => ({}));
 
-                    // Validation error (Laravel returns 422)
                     if (!response.ok) {
                         if (response.status === 422 && data.errors) {
                             let errors = Object.values(data.errors).flat().join('<br>');
@@ -99,7 +112,6 @@
                         return;
                     }
 
-                    // Success
                     document.getElementById('message').innerHTML =
                         `<div class="alert alert-success">Customer created successfully.</div>`;
 

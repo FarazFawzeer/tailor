@@ -83,7 +83,7 @@ class ProductionDashboardController extends Controller
             ->leftJoin('dress_types as dt', 'dt.id', '=', 'jbi.dress_type_id')
             ->leftJoin('customers as c', 'c.id', '=', 'j.customer_id')
             ->orderBy('jbi.updated_at', 'desc')
-            ->limit(15)
+            ->limit(5)
             ->select([
                 'jbi.id',
                 'j.job_no',
@@ -112,7 +112,7 @@ class ProductionDashboardController extends Controller
                 ->whereNotNull('hl.received_by')
                 ->groupBy('hl.received_by', 'hl.to_stage_id', 'u.name', 'ws.name')
                 ->orderByDesc('handovers')
-                ->limit(10)
+                ->limit(5)
                 ->get();
         }
 

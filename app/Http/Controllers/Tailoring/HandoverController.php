@@ -14,28 +14,63 @@ use Illuminate\Support\Collection;
 class HandoverController extends Controller
 {
     public function index(Request $request)
-    {
-        $q = trim((string)$request->get('q'));
+{
+    $q = trim((string)$request->get('q'));
 
-        $items = \App\Models\JobBatchItem::query()
-            ->with([
-                'jobBatch.job.customer',
-                'dressType',
-                'stage'
-            ])
-            ->when($q, function ($query) use ($q) {
-                $query->whereHas('jobBatch.job', function ($qq) use ($q) {
-                    $qq->where('job_no', 'like', "%{$q}%");
-                })->orWhereHas('jobBatch', function ($qq) use ($q) {
-                    $qq->where('batch_no', 'like', "%{$q}%");
-                });
-            })
-            ->orderByDesc('updated_at')
-            ->paginate(15)
-            ->withQueryString();
+    // Base query (reuse for pagination + stage summary)
+    $base = JobBatchItem::query()
+        ->with([
+            'jobBatch.job.customer',
+            'dressType',
+            'stage'
+        ])
+        ->when($q, function ($query) use ($q) {
+            $query->whereHas('jobBatch.job', function ($qq) use ($q) {
+                $qq->where('job_no', 'like', "%{$q}%");
+            })->orWhereHas('jobBatch', function ($qq) use ($q) {
+                $qq->where('batch_no', 'like', "%{$q}%");
+            });
+        });
 
-        return view('tailoring.handover.index', compact('items', 'q'));
-    }
+    // Paginated items (same as before)
+    $items = (clone $base)
+        ->orderByDesc('updated_at')
+        ->paginate(15)
+        ->withQueryString();
+
+    // ✅ Group only the CURRENT page items by Job No (still keeps pagination)
+    $groupedJobs = $items->getCollection()->groupBy(function ($it) {
+        return $it->jobBatch?->job?->job_no ?? 'UNKNOWN';
+    });
+
+    // ✅ Stage summary (for analysis)
+    $stageSummary = (clone $base)
+        ->selectRaw('current_stage_id, COUNT(*) as item_count, COALESCE(SUM(qty),0) as qty_sum')
+        ->groupBy('current_stage_id')
+        ->get()
+        ->map(function ($r) {
+            return [
+                'stage_id' => $r->current_stage_id,
+                'item_count' => (int)$r->item_count,
+                'qty_sum' => (int)$r->qty_sum,
+            ];
+        })
+        ->keyBy('stage_id');
+
+    // Active stages list (for correct order + names)
+    $stages = WorkflowStage::query()
+        ->where('is_active', 1)
+        ->orderBy('sort_order')
+        ->get(['id','name','sort_order']);
+
+    return view('tailoring.handover.index', compact(
+        'items',
+        'groupedJobs',
+        'stages',
+        'stageSummary',
+        'q'
+    ));
+}
 
     public function create(JobBatchItem $item)
     {

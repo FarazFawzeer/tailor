@@ -4,14 +4,35 @@
     <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Hiring', 'subtitle' => 'Create Agreement'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <?php
-        // Build unique category list for filter (optional)
         $categories = $availableItems->pluck('category')->filter()->unique()->values();
     ?>
 
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">New Hire Agreement</h5>
-            <p class="card-subtitle mb-0">Select available items by clicking on them (no manual typing).</p>
+    <style>
+        .report-card { border:1px solid rgba(0,0,0,.08); border-radius:14px; }
+        .muted-help { font-size: 12px; color: #6c757d; }
+        .pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; background: rgba(13,110,253,.08); }
+
+        .item-card { border:1px solid rgba(0,0,0,.08); border-radius: 14px; cursor: pointer; transition: .15s; }
+        .item-card:hover { border-color: rgba(13,110,253,.35); transform: translateY(-1px); }
+        .thumb { width:46px; height:46px; border-radius: 12px; object-fit: cover; border:1px solid rgba(0,0,0,.08); }
+
+        .selected-card { border:1px solid rgba(13,110,253,.25); border-radius:14px; }
+        .selected-row { border:1px solid rgba(0,0,0,.08); border-radius:14px; }
+        .qty-btn { width: 42px; height: 42px; display:flex; align-items:center; justify-content:center; }
+        .qty-input { height: 42px; text-align:center; font-weight:600; }
+
+        .sticky-actions { position: sticky; bottom: 0; background: #fff; padding-top: 10px; }
+        .big-btn { height: 42px; }
+    </style>
+
+    <div class="card report-card">
+        <div class="card-header d-flex align-items-start justify-content-between">
+            <div>
+                <h5 class="card-title mb-0">New Hire Agreement</h5>
+                <div class="muted-help mt-1">
+                    Step 1: Select customer + dates → Step 2: Click items → choose size & qty → Issue
+                </div>
+            </div>
         </div>
 
         <div class="card-body">
@@ -21,14 +42,14 @@
                 <?php echo csrf_field(); ?>
 
                 
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Agreement No</label>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Agreement No</label>
                         <input name="agreement_no" class="form-control" value="<?php echo e($agreementNo); ?>" readonly>
                     </div>
 
-                    <div class="col-md-8 mb-3">
-                        <label class="form-label">Customer</label>
+                    <div class="col-md-8">
+                        <label class="form-label mb-1">Customer <span class="text-danger">*</span></label>
                         <select name="customer_id" class="form-select" required>
                             <option value="">Select Customer</option>
                             <?php $__currentLoopData = $customers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -39,49 +60,46 @@
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
-                </div>
 
-                
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Issue Date</label>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Issue Date <span class="text-danger">*</span></label>
                         <input type="date" name="issue_date" class="form-control" value="<?php echo e(now()->toDateString()); ?>" required>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Expected Return Date</label>
+
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Expected Return Date <span class="text-danger">*</span></label>
                         <input type="date" name="expected_return_date" class="form-control" required>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Fine Per Day</label>
+
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Fine Per Day</label>
                         <input type="number" step="0.01" name="fine_per_day" class="form-control" value="0">
                     </div>
-                </div>
 
-                
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Deposit Received</label>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Deposit Received</label>
                         <input type="number" step="0.01" name="deposit_received" class="form-control" value="0">
                     </div>
-                    <div class="col-md-8 mb-3">
-                        <label class="form-label">Notes</label>
+
+                    <div class="col-md-8">
+                        <label class="form-label mb-1">Notes</label>
                         <input name="notes" class="form-control" placeholder="Optional notes...">
                     </div>
                 </div>
 
                 
-                <div class="card border mb-3">
+                <div class="card selected-card border mt-4 mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <b>Selected Items</b>
                         <div class="text-muted small">
-                            <span class="me-3">Selected: <b id="selectedCount">0</b></span>
+                            <span class="me-3">Lines: <b id="selectedCount">0</b></span>
                             Total Hire: <b>Rs <span id="selectedTotal">0.00</span></b>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="selectedItems" class="row g-2"></div>
+                        <div id="selectedItems" class="d-flex flex-column gap-2"></div>
                         <div id="selectedHint" class="text-muted small mt-2">
-                            Please select at least one available item from below.
+                            Please select items below, then choose size & qty.
                         </div>
                     </div>
                 </div>
@@ -90,52 +108,67 @@
                 <div class="card border mb-3">
                     <div class="card-header">
                         <b>Available Items</b>
-                        <div class="text-muted small">Click an item card to add/remove.</div>
+                        <div class="text-muted small">Click an item to add. Then choose size & qty in Selected Items.</div>
                     </div>
+
                     <div class="card-body">
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-6">
-                                <input type="text" id="itemSearch" class="form-control"
-                                    placeholder="Search by code / name / category...">
-                            </div>
 
-                            <div class="col-md-3">
-                                <select id="categoryFilter" class="form-select">
-                                    <option value="">All Categories</option>
-                                    <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                        <option value="<?php echo e(strtolower($cat)); ?>"><?php echo e($cat); ?></option>
-                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                                </select>
-                            </div>
+                        
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-body py-3">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="ti ti-search"></i></span>
+                                            <input type="text" id="itemSearch" class="form-control"
+                                                placeholder="Search item code, name or category...">
+                                        </div>
+                                    </div>
 
-                            <div class="col-md-3">
-                                <button type="button" id="clearSelection" class="btn btn-outline-secondary w-100">
-                                    Clear Selected
-                                </button>
+                                    <div class="col-md-3">
+                                        <select id="categoryFilter" class="form-select">
+                                            <option value="">All Categories</option>
+                                            <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <option value="<?php echo e(strtolower($cat)); ?>"><?php echo e($cat); ?></option>
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3 d-flex gap-2">
+                                        <button type="button" id="clearSelection" class="btn btn-light border w-100 big-btn">
+                                            <i class="ti ti-refresh me-1"></i> Clear
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
+                        
                         <div class="row g-2" id="availableGrid">
                             <?php $__currentLoopData = $availableItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $it): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <?php
                                     $thumb = $it->images->first()?->image_path ? asset($it->images->first()->image_path) : asset('/images/users/avatar-6.jpg');
                                     $cat = strtolower($it->category ?? '');
+                                    $variants = $it->variants ?? collect(); // size + qty
+                                    $totalQty = (int)$variants->sum('qty');
                                 ?>
 
-                                <div class="col-md-3 item-card-wrap"
+                                <div class="col-md-3 item-wrap"
                                     data-id="<?php echo e($it->id); ?>"
                                     data-code="<?php echo e(strtolower($it->item_code)); ?>"
                                     data-name="<?php echo e(strtolower($it->name)); ?>"
                                     data-category="<?php echo e($cat); ?>"
                                     data-price="<?php echo e((float)$it->hire_price); ?>"
+                                    data-deposit="<?php echo e((float)($it->deposit_amount ?? 0)); ?>"
                                     data-code-original="<?php echo e($it->item_code); ?>"
                                     data-name-original="<?php echo e($it->name); ?>"
-                                    data-thumb="<?php echo e($thumb); ?>">
-
-                                    <div class="border rounded p-2 h-100 item-card" style="cursor:pointer;">
+                                    data-thumb="<?php echo e($thumb); ?>"
+                                    data-variants='<?php echo json_encode($variants->map(fn($v)=>["size"=>$v->size, "qty"=>(int)$v->qty])->values(), 512) ?>'
+                                >
+                                    <div class="item-card p-2 h-100">
                                         <div class="d-flex gap-2 align-items-center">
-                                            <img src="<?php echo e($thumb); ?>" class="rounded" style="width:44px;height:44px;object-fit:cover;">
-                                            <div>
+                                            <img src="<?php echo e($thumb); ?>" class="thumb" alt="img">
+                                            <div class="flex-grow-1">
                                                 <div class="fw-bold"><?php echo e($it->item_code); ?></div>
                                                 <div class="small text-muted"><?php echo e($it->name); ?></div>
                                                 <div class="small">Rs <?php echo e(number_format((float)$it->hire_price, 2)); ?></div>
@@ -144,16 +177,17 @@
 
                                         <div class="mt-2 d-flex justify-content-between align-items-center">
                                             <span class="badge bg-success">Available</span>
-                                            <span class="badge bg-light text-dark border selectBadge">Click to Select</span>
+                                            <span class="badge bg-light text-dark border">
+                                                Stock: <?php echo e($totalQty); ?>
+
+                                            </span>
                                         </div>
 
-                                        
-                                        <input class="d-none pickItem"
-                                            type="checkbox"
-                                            value="<?php echo e($it->id); ?>"
-                                            data-code="<?php echo e($it->item_code); ?>"
-                                            data-name="<?php echo e($it->name); ?>"
-                                            data-price="<?php echo e((float)$it->hire_price); ?>">
+                                        <div class="mt-2">
+                                            <span class="badge bg-light text-dark border w-100 text-center">
+                                                Click to Add
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -168,40 +202,40 @@
                 </div>
 
                 
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="<?php echo e(route('hiring.agreements.index')); ?>" class="btn btn-secondary">Back</a>
-                    <button class="btn btn-primary" type="submit">Issue Items</button>
+                <div class="sticky-actions">
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="<?php echo e(route('hiring.agreements.index')); ?>" class="btn btn-secondary big-btn" style="width: 120px;">Back</a>
+                        <button class="btn btn-primary big-btn" type="submit" style="width: 120px;">
+                            <i class="ti ti-check me-1"></i> Issue Items
+                        </button>
+                    </div>
                 </div>
 
             </form>
         </div>
     </div>
 
-    <style>
-        .item-card.selected {
-            outline: 2px solid rgba(13,110,253,.5);
-            background: rgba(13,110,253,.06);
-        }
-        .item-card.selected .selectBadge {
-            background: #0d6efd !important;
-            color: #fff !important;
-            border-color: #0d6efd !important;
-        }
-    </style>
-
     <script>
-        const selected = new Map(); // id => {id, code, name, price, thumb}
+        /**
+         * Selected lines:
+         * key = `${itemId}__${size}`
+         * value = { item_id, size, qty, price, deposit, code, name, thumb, maxQty }
+         */
+
+         
+        const selected = new Map();
 
         const selectedCountEl = document.getElementById('selectedCount');
         const selectedTotalEl = document.getElementById('selectedTotal');
-        const selectedHintEl = document.getElementById('selectedHint');
+        const selectedHintEl  = document.getElementById('selectedHint');
 
         function money(n){ return Number(n || 0).toFixed(2); }
 
         function updateSummary() {
             selectedCountEl.textContent = selected.size;
+
             let total = 0;
-            selected.forEach(v => total += Number(v.price || 0));
+            selected.forEach(v => total += (Number(v.price||0) * Number(v.qty||0)));
             selectedTotalEl.textContent = money(total);
 
             selectedHintEl.style.display = selected.size ? 'none' : 'block';
@@ -213,21 +247,39 @@
 
             selected.forEach(v => {
                 wrap.innerHTML += `
-                    <div class="col-md-4" id="sel-${v.id}">
-                        <div class="border rounded p-2 d-flex justify-content-between align-items-center">
-                            <div class="d-flex gap-2 align-items-center">
-                                <img src="${v.thumb}" class="rounded" style="width:40px;height:40px;object-fit:cover;">
+                    <div class="selected-row p-2">
+                        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="${v.thumb}" class="thumb" alt="img">
                                 <div>
-                                    <div class="fw-bold">${v.code}</div>
+                                    <div class="fw-bold">${v.code} <span class="badge bg-light text-dark border ms-1">Size: ${v.size}</span></div>
                                     <div class="text-muted small">${v.name}</div>
-                                    <div class="small">Rs ${money(v.price)}</div>
+                                    <div class="small">
+                                        Rs ${money(v.price)} × <b>${v.qty}</b> =
+                                        <b>Rs ${money(Number(v.price)*Number(v.qty))}</b>
+                                        <span class="text-muted"> (Max ${v.maxQty})</span>
+                                    </div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="removeSelected(${v.id})">
-                                Remove
-                            </button>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-dark qty-btn" onclick="qtyDown('${v.key}')">-</button>
+                                <input type="number" class="form-control qty-input" style="width:90px;"
+                                       min="1" max="${v.maxQty}" value="${v.qty}"
+                                       onchange="qtySet('${v.key}', this.value)">
+                                <button type="button" class="btn btn-outline-dark qty-btn" onclick="qtyUp('${v.key}')">+</button>
+
+                                <button type="button" class="btn btn-danger" onclick="removeLine('${v.key}')">
+                                    Remove
+                                </button>
+                            </div>
                         </div>
-                        <input type="hidden" name="item_ids[]" value="${v.id}">
+
+                        
+                        <input type="hidden" name="lines[${v.key}][hire_item_id]" value="${v.item_id}">
+                        <input type="hidden" name="lines[${v.key}][size]" value="${v.size}">
+                        <input type="hidden" name="lines[${v.key}][qty]" value="${v.qty}" id="hiddenQty-${v.key}">
                     </div>
                 `;
             });
@@ -235,44 +287,132 @@
             updateSummary();
         }
 
-        window.removeSelected = function(id) {
-            selected.delete(Number(id));
-            const cb = document.querySelector(`.pickItem[value="${id}"]`);
-            if (cb) cb.checked = false;
+        window.removeLine = function(key){
+            selected.delete(key);
+            renderSelected();
+        }
 
-            const cardWrap = document.querySelector(`.item-card-wrap[data-id="${id}"] .item-card`);
-            if (cardWrap) cardWrap.classList.remove('selected');
+        window.qtySet = function(key, val){
+            const line = selected.get(key);
+            if(!line) return;
+
+            let q = parseInt(val || 1, 10);
+            if(isNaN(q) || q < 1) q = 1;
+            if(q > line.maxQty) q = line.maxQty;
+
+            line.qty = q;
+            selected.set(key, line);
+
+            const hidden = document.getElementById('hiddenQty-' + key);
+            if(hidden) hidden.value = q;
 
             renderSelected();
         }
 
-        // Click card to toggle selection
-        document.querySelectorAll('.item-card-wrap').forEach(wrap => {
-            const card = wrap.querySelector('.item-card');
-            const cb = wrap.querySelector('.pickItem');
+        window.qtyUp = function(key){
+            const line = selected.get(key);
+            if(!line) return;
+            if(line.qty < line.maxQty){
+                line.qty++;
+                selected.set(key, line);
+            }
+            renderSelected();
+        }
 
-            card.addEventListener('click', () => {
-                cb.checked = !cb.checked;
+        window.qtyDown = function(key){
+            const line = selected.get(key);
+            if(!line) return;
+            if(line.qty > 1){
+                line.qty--;
+                selected.set(key, line);
+            }
+            renderSelected();
+        }
 
-                const id = Number(cb.value);
-                if (cb.checked) {
-                    selected.set(id, {
-                        id,
-                        code: wrap.dataset.codeOriginal,
-                        name: wrap.dataset.nameOriginal,
-                        price: wrap.dataset.price,
-                        thumb: wrap.dataset.thumb
-                    });
-                    card.classList.add('selected');
-                } else {
-                    selected.delete(id);
-                    card.classList.remove('selected');
+        // Click item -> open size prompt (simple) then add line
+        document.querySelectorAll('.item-wrap').forEach(wrap => {
+            wrap.addEventListener('click', () => {
+                const variants = JSON.parse(wrap.dataset.variants || '[]').filter(v => (v.qty || 0) > 0);
+
+                if(variants.length === 0){
+                    Swal.fire('No Stock', 'No available sizes/qty for this item.', 'warning');
+                    return;
                 }
-                renderSelected();
+
+                // Build a nice size selector
+                const optionsHtml = variants.map(v => {
+                    return `<option value="${v.size}" data-max="${v.qty}">${v.size} (Stock: ${v.qty})</option>`;
+                }).join('');
+
+                Swal.fire({
+                    title: 'Select Size & Qty',
+                    html: `
+                        <div class="text-start">
+                            <div class="mb-2"><b>${wrap.dataset.codeOriginal}</b> - ${wrap.dataset.nameOriginal}</div>
+
+                            <label class="form-label mb-1">Size</label>
+                            <select id="swalSize" class="form-select mb-2">
+                                ${optionsHtml}
+                            </select>
+
+                            <label class="form-label mb-1">Qty</label>
+                            <input id="swalQty" type="number" class="form-control" min="1" value="1">
+                            <div class="muted-help mt-2">Qty cannot exceed stock.</div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Add',
+                    cancelButtonText: 'Cancel',
+                    preConfirm: () => {
+                        const sizeEl = document.getElementById('swalSize');
+                        const qtyEl  = document.getElementById('swalQty');
+
+                        const size = sizeEl.value;
+                        const max  = parseInt(sizeEl.selectedOptions[0].dataset.max || "0", 10);
+                        let qty    = parseInt(qtyEl.value || "1", 10);
+
+                        if(!size) return Swal.showValidationMessage('Please select a size');
+                        if(isNaN(qty) || qty < 1) qty = 1;
+                        if(qty > max) return Swal.showValidationMessage('Qty exceeds available stock');
+
+                        return { size, qty, max };
+                    }
+                }).then(r => {
+                    if(!r.isConfirmed) return;
+
+                    const { size, qty, max } = r.value;
+
+                    const key = `${wrap.dataset.id}__${size}`;
+                    const price = Number(wrap.dataset.price || 0);
+
+                    // If already selected same item+size, just increase qty (but not beyond max)
+                    if(selected.has(key)){
+                        const existing = selected.get(key);
+                        const newQty = Math.min(existing.qty + qty, max);
+                        existing.qty = newQty;
+                        existing.maxQty = max;
+                        selected.set(key, existing);
+                    } else {
+                        selected.set(key, {
+                            key,
+                            item_id: Number(wrap.dataset.id),
+                            size: size,
+                            qty: qty,
+                            maxQty: max,
+                            price: price,
+                            deposit: Number(wrap.dataset.deposit || 0),
+                            code: wrap.dataset.codeOriginal,
+                            name: wrap.dataset.nameOriginal,
+                            thumb: wrap.dataset.thumb,
+                        });
+                    }
+
+                    renderSelected();
+                });
             });
         });
 
-        // Search + filter
+        // Search + category filter
         const searchEl = document.getElementById('itemSearch');
         const catEl = document.getElementById('categoryFilter');
 
@@ -280,23 +420,19 @@
             const q = (searchEl.value || '').trim().toLowerCase();
             const cat = (catEl.value || '').trim().toLowerCase();
 
-            document.querySelectorAll('.item-card-wrap').forEach(wrap => {
+            document.querySelectorAll('.item-wrap').forEach(wrap => {
                 const text = `${wrap.dataset.code} ${wrap.dataset.name} ${wrap.dataset.category}`;
                 const matchesQ = !q || text.includes(q);
                 const matchesCat = !cat || wrap.dataset.category === cat;
-
                 wrap.style.display = (matchesQ && matchesCat) ? '' : 'none';
             });
         }
-
         searchEl.addEventListener('input', applyFilter);
         catEl.addEventListener('change', applyFilter);
 
-        // Clear selected
+        // Clear
         document.getElementById('clearSelection').addEventListener('click', () => {
             selected.clear();
-            document.querySelectorAll('.pickItem').forEach(cb => cb.checked = false);
-            document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
             renderSelected();
         });
 
@@ -305,7 +441,7 @@
             e.preventDefault();
 
             if (selected.size === 0) {
-                Swal.fire('Select Items', 'Please select at least one available item.', 'warning');
+                Swal.fire('Select Items', 'Please select at least one item with size & qty.', 'warning');
                 return;
             }
 
@@ -334,8 +470,8 @@
 
                 msg.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
                 setTimeout(() => window.location.href = "<?php echo e(route('hiring.agreements.index')); ?>", 900);
-            }).catch(err => {
-                document.getElementById('message').innerHTML = `<div class="alert alert-danger">Error: ${err}</div>`;
+            }).catch(() => {
+                document.getElementById('message').innerHTML = `<div class="alert alert-danger">Network error. Please try again.</div>`;
             });
         });
 

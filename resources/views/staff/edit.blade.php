@@ -3,6 +3,14 @@
 @section('content')
     @include('layouts.partials.page-title', ['title' => 'Staff', 'subtitle' => 'Edit'])
 
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
+
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">Edit Staff</h5>
@@ -12,21 +20,30 @@
         <div class="card-body">
             <div id="message"></div>
 
-            <form id="updateStaffForm" action="{{ route('staff.update', $staff) }}" method="POST">
+            <small class="text-muted d-block mb-3">
+                Fields marked with <span class="required-star">*</span> are required.
+            </small>
+
+            <form id="updateStaffForm" action="{{ route('staff.update', $staff) }}" method="POST" autocomplete="off">
                 @csrf
                 @method('PUT')
 
-                {{-- Name + Email --}}
+                {{-- Name + User Name --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="name" class="form-label">Full Name</label>
+                        <label for="name" class="form-label">
+                            Full Name <span class="required-star">*</span>
+                        </label>
                         <input type="text" id="name" name="name" class="form-control"
                             value="{{ old('name', $staff->name) }}" required>
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" id="email" name="email" class="form-control"
+                        <label for="email" class="form-label">
+                            User Name <span class="required-star">*</span>
+                        </label>
+                        {{-- keep name="email" to store username text in users.email column --}}
+                        <input type="text" id="email" name="email" class="form-control"
                             value="{{ old('email', $staff->email) }}" required>
                     </div>
                 </div>
@@ -36,12 +53,16 @@
                     <div class="col-md-6 mb-3">
                         <label for="password" class="form-label">New Password (optional)</label>
                         <input type="password" id="password" name="password" class="form-control"
+                            value=""
+                            autocomplete="new-password"
                             placeholder="Leave empty to keep current password">
                     </div>
 
                     <div class="col-md-6 mb-3">
                         <label for="password_confirmation" class="form-label">Re-enter Password</label>
                         <input type="password" id="password_confirmation" name="password_confirmation"
+                            value=""
+                            autocomplete="new-password"
                             class="form-control" placeholder="Re-enter Password">
                     </div>
                 </div>
@@ -49,7 +70,9 @@
                 {{-- Role + Active --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="role" class="form-label">Staff Role</label>
+                        <label for="role" class="form-label">
+                            Staff Role <span class="required-star">*</span>
+                        </label>
                         <select id="role" name="role" class="form-select" required>
                             <option value="">Select Role</option>
                             @php

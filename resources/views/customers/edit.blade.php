@@ -3,6 +3,14 @@
 @section('content')
     @include('layouts.partials.page-title', ['title' => 'Customers', 'subtitle' => 'Edit'])
 
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
+
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">Edit Customer</h5>
@@ -12,6 +20,10 @@
         <div class="card-body">
             <div id="message"></div>
 
+            <small class="text-muted d-block mb-3">
+                Fields marked with <span class="required-star">*</span> are required.
+            </small>
+
             <form id="updateCustomerForm" action="{{ route('customers.update', $customer) }}" method="POST">
                 @csrf
                 @method('PUT')
@@ -19,7 +31,9 @@
                 {{-- Name + Phone --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="full_name" class="form-label">Full Name</label>
+                        <label for="full_name" class="form-label">
+                            Full Name <span class="required-star">*</span>
+                        </label>
                         <input type="text" id="full_name" name="full_name" class="form-control"
                             value="{{ old('full_name', $customer->full_name) }}" required>
                     </div>
@@ -62,7 +76,7 @@
 
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('customers.index') }}" class="btn btn-secondary">Back</a>
-                    <button type="submit" class="btn btn-primary">Update Customer</button>
+                    <button type="submit" class="btn btn-primary">Update </button>
                 </div>
             </form>
         </div>

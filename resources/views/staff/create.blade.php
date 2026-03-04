@@ -3,6 +3,14 @@
 @section('content')
     @include('layouts.partials.page-title', ['title' => 'Staff', 'subtitle' => 'Create'])
 
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
+
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">New Staff</h5>
@@ -11,46 +19,61 @@
         <div class="card-body">
             <div id="message"></div>
 
+            <small class="text-muted d-block mb-3">
+                Fields marked with <span class="required-star">*</span> are required.
+            </small>
+
             <form id="createStaffForm" action="{{ route('staff.store') }}" method="POST">
                 @csrf
 
-                {{-- Name + Email --}}
+                {{-- Name + User Name --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="name" class="form-label">Full Name</label>
+                        <label for="name" class="form-label">
+                            Full Name <span class="required-star">*</span>
+                        </label>
                         <input type="text" id="name" name="name" class="form-control" value="{{ old('name') }}"
                             placeholder="Ex: Staff Name" required>
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" id="email" name="email" class="form-control" value="{{ old('email') }}"
-                            placeholder="Ex: staff@gmail.com" required>
+                        <label for="email" class="form-label">
+                            User Name <span class="required-star">*</span>
+                        </label>
+                        {{-- keep name="email" to save into DB email column --}}
+                        <input type="text" id="email" name="email" class="form-control" value="{{ old('email') }}"
+                            placeholder="Ex: staff_01" required>
                     </div>
                 </div>
 
                 {{-- Password + Confirm --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="password" class="form-label">Password</label>
+                        <label for="password" class="form-label">
+                            Password <span class="required-star">*</span>
+                        </label>
                         <input type="password" id="password" name="password" class="form-control"
-                            placeholder="Password" required>
+                            placeholder="Password" required autocomplete="new-password">
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label for="password_confirmation" class="form-label">Re-enter Password</label>
+                        <label for="password_confirmation" class="form-label">
+                            Re-enter Password <span class="required-star">*</span>
+                        </label>
                         <input type="password" id="password_confirmation" name="password_confirmation"
-                            class="form-control" placeholder="Re-enter Password" required>
+                            class="form-control" placeholder="Re-enter Password" required autocomplete="new-password">
                     </div>
                 </div>
 
                 {{-- Role + Active --}}
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="role" class="form-label">Staff Role</label>
+                        <label for="role" class="form-label">
+                            Staff Role <span class="required-star">*</span>
+                        </label>
                         <select id="role" name="role" class="form-select" required>
                             <option value="">Select Role</option>
-                            @foreach($roles as $r)
+                            @foreach ($roles as $r)
                                 <option value="{{ $r }}" {{ old('role') == $r ? 'selected' : '' }}>
                                     {{ ucwords(str_replace('_', ' ', $r)) }}
                                 </option>
@@ -61,7 +84,8 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label d-block">Status</label>
                         <div class="form-check form-switch mt-1">
-                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" checked>
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                                value="1" checked>
                             <label class="form-check-label" for="is_active">Active</label>
                         </div>
                     </div>

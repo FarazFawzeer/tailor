@@ -22,4 +22,6 @@ class ItemMeasurementSet extends Model
     {
         return $this->belongsTo(\App\Models\JobBatchItem::class, 'job_batch_item_id');
     }
+
+    
 }

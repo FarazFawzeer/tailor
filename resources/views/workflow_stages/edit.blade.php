@@ -2,6 +2,13 @@
 
 @section('content')
     @include('layouts.partials.page-title', ['title' => 'Workflow Stages', 'subtitle' => 'Edit'])
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
 
     <div class="card">
         <div class="card-header">
@@ -17,18 +24,19 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Code</label>
+                        <label class="form-label">Code<span class="required-star">*</span></label>
                         <input type="text" name="code" class="form-control" value="{{ $stage->code }}" required>
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Name</label>
+                        <label class="form-label">Name<span class="required-star">*</span></label>
                         <input type="text" name="name" class="form-control" value="{{ $stage->name }}" required>
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Sort Order</label>
-                        <input type="number" name="sort_order" class="form-control" value="{{ $stage->sort_order }}" min="0">
+                        <input type="number" name="sort_order" class="form-control" value="{{ $stage->sort_order }}"
+                            min="0">
                     </div>
                 </div>
 

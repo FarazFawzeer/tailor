@@ -32,9 +32,9 @@
                                 @csrf
 
                                 <div class="mb-3">
-                                    <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" id="email" name="email"
-                                        value="{{ old('email') }}" placeholder="Enter your email" required>
+                                    <label for="email" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="email" name="email"
+                                        value="{{ old('email') }}" placeholder="Enter your username" required>
                                     @error('email')
                                         <small class="text-danger">{{ $message }}</small>
                                     @enderror

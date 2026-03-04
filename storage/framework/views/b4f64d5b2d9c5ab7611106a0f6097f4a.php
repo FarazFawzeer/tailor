@@ -3,6 +3,14 @@
 <?php $__env->startSection('content'); ?>
     <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Workflow Stages', 'subtitle' => 'Create'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
+    <style>
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+    </style>
+
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">New Workflow Stage</h5>
@@ -16,12 +24,12 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Code</label>
+                        <label class="form-label">Code <span class="required-star">*</span></label>
                         <input type="text" name="code" class="form-control" placeholder="Ex: CUT" required>
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Name</label>
+                        <label class="form-label">Name<span class="required-star">*</span></label>
                         <input type="text" name="name" class="form-control" placeholder="Ex: Cutting" required>
                     </div>
 
@@ -44,7 +52,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                    <a href="<?php echo e(route('workflow-stages.index')); ?>" class="btn btn-secondary">Back</a>
+                    <a href="<?php echo e(route('workflow-stages.index')); ?>" class="btn btn-secondary" style="width: 120px;">Back</a>
                     <button type="submit" class="btn btn-primary">Create Stage</button>
                 </div>
             </form>

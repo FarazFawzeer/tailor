@@ -3,66 +3,260 @@
 @section('content')
     @include('layouts.partials.page-title', ['title' => 'Tailoring', 'subtitle' => 'Production Dashboard'])
 
-    {{-- TOP CARDS --}}
-    <div class="row">
-        @foreach($stages as $s)
+    <style>
+        .stat-card {
+            border: 1px solid rgba(0, 0, 0, .07);
+            border-radius: 14px;
+        }
+
+        .stat-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .muted {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
+    </style>
+
+    <style>
+        .stage-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stage-card {
+            flex: 0 0 calc(20% - 12px);
+            /* 5 cards per row */
+        }
+
+        @media (max-width:1200px) {
+            .stage-card {
+                flex: 0 0 calc(33.33% - 12px);
+            }
+
+            /* tablet */
+        }
+
+        @media (max-width:768px) {
+            .stage-card {
+                flex: 0 0 calc(50% - 12px);
+            }
+
+            /* mobile */
+        }
+
+        @media (max-width:500px) {
+            .stage-card {
+                flex: 0 0 100%;
+            }
+        }
+    </style>
+
+
+    <div class="stage-row">
+
+        @foreach ($stages as $s)
             @php
-                $count = (int)($stageCounts[$s->id] ?? 0);
-                $qty   = (int)($stageQtyCounts[$s->id] ?? 0);
+                $count = (int) ($stageCounts[$s->id] ?? 0);
+                $qty = (int) ($stageQtyCounts[$s->id] ?? 0);
                 $isLast = $lastStage && $lastStage->id === $s->id;
             @endphp
 
-            <div class="col-md-6 col-xl-4 mb-3">
-                <div class="card h-100">
+            <div class="stage-card">
+                <div class="card stat-card h-100">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="d-flex justify-content-between align-items-start">
+
                             <div>
-                                <p class="text-muted mb-1">{{ $s->name }}</p>
-                                <h3 class="mb-0">{{ $count }}</h3>
-                                <small class="text-muted">Total Qty: {{ $qty }}</small>
+                                <div class="text-muted">{{ $s->name }}</div>
+
+                                <div class="d-flex align-items-end gap-2">
+                                    <h2 class="mb-0">{{ $count }}</h2>
+                                    <span class="muted mb-1">items</span>
+                                </div>
+
+                                <div class="muted">Total Qty: <b>{{ $qty }}</b></div>
+
+                                @if ($isLast)
+                                    <div class="mt-2">
+                                        <span class="badge bg-success">Ready for Delivery</span>
+                                    </div>
+                                @endif
                             </div>
-                            <div class="avatar-md bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center">
+
+                            <div class="stat-icon bg-primary bg-opacity-10">
                                 <iconify-icon icon="{{ $isLast ? 'solar:box-outline' : 'solar:scissors-outline' }}"
-                                    class="fs-32 text-primary"></iconify-icon>
+                                    class="fs-28 text-primary">
+                                </iconify-icon>
                             </div>
+
                         </div>
 
-                        @if($isLast)
-                            <div class="mt-2">
-                                <span class="badge bg-success">Ready for Delivery Stage</span>
-                            </div>
-                        @endif
                     </div>
                 </div>
             </div>
         @endforeach
+
     </div>
 
-    {{-- SECOND ROW --}}
-    <div class="row">
-        {{-- Ready + Overdue --}}
-        <div class="col-md-6 mb-3">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Summary</h5>
+
+    <div class="row mt-3">
+
+        {{-- OVERDUE ITEMS --}}
+        @if ($hasDueDate && $overdueItems->count())
+            <div class="col-lg-4 mb-3">
+                <div class="card stat-card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-danger">Overdue </h5>
+                        <span class="muted">Most urgent</span>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Job</th>
+                                        <th>Customer</th>
+
+
+                                        <th>Due</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach ($overdueItems->take(5) as $o)
+                                        <tr>
+                                            <td>{{ $o->job_no }}</td>
+                                            <td>{{ $o->full_name ?? 'N/A' }}</td>
+
+
+                                            <td class="text-danger">
+                                                {{ \Carbon\Carbon::parse($o->due_date)->format('d M Y') }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+
+        {{-- LATEST ITEMS --}}
+        <div class="col-lg-8 mb-3">
+            <div class="card stat-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">Latest Items</h5>
+                        <div class="muted">Last updated </div>
+                    </div>
+
+                    <a href="{{ route('tailoring.jobs.index') }}" class="btn btn-outline-primary btn-sm">
+                        View Jobs
+                    </a>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Job</th>
+                                    <th>Customer</th>
+                                    <th>Dress</th>
+                                    <th class="text-end">Qty</th>
+                                    <th>Stage</th>
+                                    <th>Due</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @forelse($latestItems->take(10) as $it)
+                                    <tr>
+                                        <td>{{ $it->job_no }}</td>
+                                        <td>{{ $it->full_name ?? 'N/A' }}</td>
+                                        <td>{{ $it->dress_name ?? 'N/A' }}</td>
+                                        <td class="text-end">{{ $it->qty }}</td>
+
+                                        <td>
+                                            <span class="badge bg-info" style="width: 75px;">
+                                                {{ $it->stage_name ?? 'N/A' }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            @if (!empty($it->due_date))
+                                                {{ \Carbon\Carbon::parse($it->due_date)->format('d M Y') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            {{ \Carbon\Carbon::parse($it->updated_at)->format('d M Y, h:i A') }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">
+                                            No production items found.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {{-- SUMMARY --}}
+    <div class="row g-3 mt-1">
+        <div class="col-12 col-lg-6">
+            <div class="card stat-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Quick Summary</h5>
+                    <span class="muted">Today</span>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Ready for Delivery Items</span>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Ready Items</span>
                         <b>{{ $readyForDeliveryCount }}</b>
                     </div>
-                    <div class="d-flex justify-content-between mb-3">
-                        <span>Ready for Delivery Qty</span>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Ready Qty</span>
                         <b>{{ $readyForDeliveryQty }}</b>
                     </div>
 
-                    @if($hasDueDate)
+                    @if ($hasDueDate)
                         <hr>
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
                             <span class="text-danger">Overdue Items</span>
                             <b class="text-danger">{{ $overdueCount }}</b>
                         </div>
-                        <small class="text-muted">Based on jobs.due_date</small>
+                        <div class="muted">Based on job due date</div>
                     @else
                         <div class="alert alert-info mb-0">
                             Overdue tracking disabled (jobs.due_date column not found).
@@ -72,136 +266,21 @@
             </div>
         </div>
 
-        {{-- Staff workload (optional) --}}
-        <div class="col-md-6 mb-3">
-            <div class="card h-100">
+        {{-- SIMPLE NOTE CARD --}}
+        <div class="col-12 col-lg-6">
+            <div class="card stat-card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Staff Workload (Optional)</h5>
-                    <p class="card-subtitle mb-0">Shows only if handover_logs table exists.</p>
+                    <h5 class="card-title mb-0">Tips</h5>
                 </div>
                 <div class="card-body">
-                    @if($staffWorkload->count())
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Staff</th>
-                                        <th>Stage</th>
-                                        <th>Handovers</th>
-                                        <th>Total Qty</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($staffWorkload as $w)
-                                        <tr>
-                                            <td>{{ $w->staff_name ?? 'N/A' }}</td>
-                                            <td>{{ $w->stage_name ?? 'N/A' }}</td>
-                                            <td>{{ $w->handovers }}</td>
-                                            <td>{{ $w->total_qty ?? 0 }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="alert alert-secondary mb-0">
-                            Workload data not available yet (handover logs not created).
-                        </div>
-                    @endif
+                    <ul class="mb-0">
+                        <li class="mb-2">Use <b>Measurements</b> only when template is selected.</li>
+                        <li class="mb-2">Make sure <b>Job Due Date</b> and <b>Batch Due Date</b> are filled.</li>
+                        <li class="mb-0">If item is delayed, check <b>Overdue Items</b> count.</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Overdue list --}}
-    @if($hasDueDate && $overdueItems->count())
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="card-title mb-0 text-danger">Overdue Items (Top 10)</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-centered align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Job</th>
-                                <th>Batch</th>
-                                <th>Customer</th>
-                                <th>Dress</th>
-                                <th>Qty</th>
-                                <th>Stage</th>
-                                <th>Due Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($overdueItems as $o)
-                                <tr>
-                                    <td>{{ $o->job_no }}</td>
-                                    <td>{{ $o->batch_no }}</td>
-                                  <td>{{ $o->full_name ?? 'N/A' }}</td>
-                                    <td>{{ $o->dress_name ?? 'N/A' }}</td>
-                                    <td>{{ $o->qty }}</td>
-                                    <td><span class="badge bg-warning">{{ $o->stage_name ?? 'N/A' }}</span></td>
-                                    <td class="text-danger">{{ \Carbon\Carbon::parse($o->due_date)->format('d M Y') }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Latest items --}}
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Latest Production Items</h5>
-            <p class="card-subtitle mb-0">Recently updated items (by updated_at).</p>
-        </div>
-
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover table-centered align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Job</th>
-                            <th>Batch</th>
-                            <th>Customer</th>
-                            <th>Dress</th>
-                            <th>Qty</th>
-                            <th>Stage</th>
-                            <th>Due</th>
-                            <th>Updated</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($latestItems as $it)
-                            <tr>
-                                <td>{{ $it->job_no }}</td>
-                                <td>{{ $it->batch_no }}</td>
-                           <td>{{ $it->full_name ?? 'N/A' }}</td>
-                                <td>{{ $it->dress_name ?? 'N/A' }}</td>
-                                <td>{{ $it->qty }}</td>
-                                <td>
-                                    <span class="badge bg-info">{{ $it->stage_name ?? 'N/A' }}</span>
-                                </td>
-                                <td>
-                                    @if(!empty($it->due_date))
-                                        {{ \Carbon\Carbon::parse($it->due_date)->format('d M Y') }}
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-                                <td>{{ \Carbon\Carbon::parse($it->updated_at)->format('d M Y, h:i A') }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="text-center text-muted">No production items found.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 @endsection

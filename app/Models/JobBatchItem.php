@@ -73,4 +73,9 @@ class JobBatchItem extends Model
     {
         return $this->hasMany(\App\Models\JobBatchItem::class, 'parent_item_id');
     }
+
+     public function measurementSets()
+    {
+        return $this->hasMany(\App\Models\Tailoring\ItemMeasurementSet::class, 'job_batch_item_id');
+    }
 }
