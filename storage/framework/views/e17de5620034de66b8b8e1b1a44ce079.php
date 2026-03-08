@@ -1,10 +1,10 @@
-@extends('layouts.vertical', ['subtitle' => 'Create Job (Easy)'])
 
-@section('content')
-    @include('layouts.partials.page-title', [
+
+<?php $__env->startSection('content'); ?>
+    <?php echo $__env->make('layouts.partials.page-title', [
         'title' => 'Tailoring Jobs',
         'subtitle' => 'Create (Easy Screen)',
-    ])
+    ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <style>
         .required-star {
@@ -218,24 +218,24 @@
                 Fields marked with <span class="required-star">*</span> are required.
             </small>
 
-            <form id="wizardForm" action="{{ route('tailoring.jobs.storeWizard') }}" method="POST">
-                @csrf
+            <form id="wizardForm" action="<?php echo e(route('tailoring.jobs.storeWizard')); ?>" method="POST">
+                <?php echo csrf_field(); ?>
 
-                {{-- JOB DETAILS --}}
+                
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Customer <span class="required-star">*</span></label>
                         <select name="customer_id" class="form-select" required>
                             <option value="">Select Customer</option>
-                            @foreach ($customers as $c)
-                                <option value="{{ $c->id }}">{{ $c->full_name }} ({{ $c->phone ?? '-' }})</option>
-                            @endforeach
+                            <?php $__currentLoopData = $customers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($c->id); ?>"><?php echo e($c->full_name); ?> (<?php echo e($c->phone ?? '-'); ?>)</option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
 
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Job Date</label>
-                        <input type="date" name="job_date" class="form-control" value="{{ now()->toDateString() }}">
+                        <input type="date" name="job_date" class="form-control" value="<?php echo e(now()->toDateString()); ?>">
                     </div>
 
                     <div class="col-md-3 mb-3">
@@ -249,7 +249,7 @@
                     <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes for this job"></textarea>
                 </div>
 
-                {{-- GRAND TOTAL --}}
+                
                 <div class="row g-2 mb-3">
                     <div class="col-md-4 ms-auto">
                         <div class="total-box text-end">
@@ -261,7 +261,7 @@
 
                 <hr>
 
-                {{-- BATCHES AREA --}}
+                
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
                         <h5 class="mb-0">Batches</h5>
@@ -273,14 +273,14 @@
                 <div id="batchesArea"></div>
 
                 <div class="d-flex justify-content-end gap-2 mt-3">
-                    <a href="{{ route('tailoring.jobs.index') }}" class="btn btn-secondary" style="width: 150px;">Back</a>
+                    <a href="<?php echo e(route('tailoring.jobs.index')); ?>" class="btn btn-secondary" style="width: 150px;">Back</a>
                     <button class="btn btn-primary" type="submit" style="width: 150px;">Save Job</button>
                 </div>
             </form>
         </div>
     </div>
 
-    {{-- MEASUREMENT MODAL --}}
+    
     <div class="modal fade" id="measurementModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
@@ -305,7 +305,7 @@
         </div>
     </div>
 
-    @php
+    <?php
         $dressTypesJs = [];
         foreach ($dressTypes as $d) {
             $dressTypesJs[] = [
@@ -331,14 +331,14 @@
 
         $defaultFront = asset('/images/diagrams/default-front.png');
         $defaultBack = asset('/images/diagrams/default-back.png');
-    @endphp
+    ?>
 
     <script>
-        const DRESS_TYPES = @json($dressTypesJs);
-        const TEMPLATES = @json($templatesJs);
+        const DRESS_TYPES = <?php echo json_encode($dressTypesJs, 15, 512) ?>;
+        const TEMPLATES = <?php echo json_encode($templatesJs, 15, 512) ?>;
 
-        const DEFAULT_FRONT = @json($defaultFront);
-        const DEFAULT_BACK = @json($defaultBack);
+        const DEFAULT_FRONT = <?php echo json_encode($defaultFront, 15, 512) ?>;
+        const DEFAULT_BACK = <?php echo json_encode($defaultBack, 15, 512) ?>;
 
         const HIGHLIGHT_MAP = {
             chest: 'zone-chest',
@@ -441,7 +441,7 @@
                     <div class="row">
                         <div class="col-md-3 mb-2">
                             <label class="form-label">Batch Date</label>
-                            <input type="date" class="form-control" name="batches[${idx}][batch_date]" value="{{ now()->toDateString() }}">
+                            <input type="date" class="form-control" name="batches[${idx}][batch_date]" value="<?php echo e(now()->toDateString()); ?>">
                         </div>
 
                         <div class="col-md-3 mb-2">
@@ -809,7 +809,7 @@
             } else {
                 btnSaveMeasurements.disabled = false;
 
-                const res = await fetch(`{{ url('measurement-templates') }}/${templateId}/fields`, {
+                const res = await fetch(`<?php echo e(url('measurement-templates')); ?>/${templateId}/fields`, {
                     headers: {
                         "Accept": "application/json"
                     }
@@ -989,7 +989,7 @@
                 box.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
 
                 setTimeout(() => {
-                    window.location.href = "{{ url('tailoring/jobs') }}/" + data.data.id;
+                    window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data.data.id;
                 }, 700);
 
             }).catch(err => {
@@ -997,4 +997,6 @@
             });
         });
     </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.vertical', ['subtitle' => 'Create Job (Easy)'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH F:\Personal Projects\Infotech\tailor\resources\views/tailoring/jobs/create_wizard.blade.php ENDPATH**/ ?>

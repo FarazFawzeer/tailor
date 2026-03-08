@@ -23,45 +23,42 @@ class JobController extends Controller
     public function index(Request $request)
     {
         $q = trim((string)$request->get('q'));
+        $deliveredStageId = WorkflowStage::where('code', 'DELIVERED')->value('id');
 
         $jobs = Job::query()
             ->with(['customer', 'currentStage'])
-
-            // keep your counts
             ->withCount([
                 'batches',
                 'batches as items_count' => function ($q) {
                     $q->join('job_batch_items', 'job_batches.id', '=', 'job_batch_items.job_batch_id');
                 }
             ])
-
-            // ✅ totals & progress using subqueries (safe + no groupBy)
             ->addSelect([
-                // total qty (sum of all item qty)
                 'total_qty' => JobBatchItem::query()
                     ->selectRaw('COALESCE(SUM(job_batch_items.qty),0)')
                     ->join('job_batches', 'job_batches.id', '=', 'job_batch_items.job_batch_id')
                     ->whereColumn('job_batches.job_id', 'jobs.id'),
 
-                // completed qty (sum qty where completed_at not null)
                 'completed_qty' => JobBatchItem::query()
                     ->selectRaw('COALESCE(SUM(CASE WHEN job_batch_items.completed_at IS NOT NULL THEN job_batch_items.qty ELSE 0 END),0)')
                     ->join('job_batches', 'job_batches.id', '=', 'job_batch_items.job_batch_id')
                     ->whereColumn('job_batches.job_id', 'jobs.id'),
 
-                // ✅ total amount (sum line_total OR qty*unit_price)
+                'delivered_qty' => JobBatchItem::query()
+                    ->selectRaw('COALESCE(SUM(CASE WHEN job_batch_items.current_stage_id = ? AND job_batch_items.completed_at IS NULL THEN job_batch_items.qty ELSE 0 END),0)', [$deliveredStageId])
+                    ->join('job_batches', 'job_batches.id', '=', 'job_batch_items.job_batch_id')
+                    ->whereColumn('job_batches.job_id', 'jobs.id'),
+
                 'total_amount' => JobBatchItem::query()
                     ->selectRaw('COALESCE(SUM(COALESCE(job_batch_items.line_total, (job_batch_items.qty * job_batch_items.unit_price))),0)')
                     ->join('job_batches', 'job_batches.id', '=', 'job_batch_items.job_batch_id')
                     ->whereColumn('job_batches.job_id', 'jobs.id'),
             ])
-
             ->when($q, function ($query) use ($q) {
                 $query->where('job_no', 'like', "%{$q}%")
                     ->orWhereHas('customer', fn($c) => $c->where('full_name', 'like', "%{$q}%")
                         ->orWhere('phone', 'like', "%{$q}%"));
             })
-
             ->latest()
             ->paginate(10)
             ->withQueryString();

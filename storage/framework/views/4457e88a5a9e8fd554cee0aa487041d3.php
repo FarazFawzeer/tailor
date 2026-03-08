@@ -1,9 +1,9 @@
-@extends('layouts.vertical', ['subtitle' => 'Handover Create'])
 
-@section('content')
-    @include('layouts.partials.page-title', ['title' => 'Handover', 'subtitle' => 'Create'])
 
-    @php
+<?php $__env->startSection('content'); ?>
+    <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Handover', 'subtitle' => 'Create'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
+    <?php
         $jobNo   = $item->jobBatch?->job?->job_no ?? '-';
         $batchNo = $item->jobBatch?->batch_no ?? '-';
         $customer = $item->jobBatch?->job?->customer?->full_name ?? 'N/A';
@@ -13,30 +13,31 @@
         // group id to understand split items
         $groupId = $item->parent_item_id ? $item->parent_item_id : $item->id;
         $isPartial = (bool)$item->parent_item_id;
-    @endphp
+    ?>
 
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
                 <div>
                     <h5 class="card-title mb-1">
-                        Job: {{ $jobNo }} | Batch: {{ $batchNo }}
-                        @if($isPartial)
+                        Job: <?php echo e($jobNo); ?> | Batch: <?php echo e($batchNo); ?>
+
+                        <?php if($isPartial): ?>
                             <span class="badge bg-warning ms-2">Partial Item</span>
-                        @endif
+                        <?php endif; ?>
                     </h5>
 
                     <p class="card-subtitle mb-0">
-                        Customer: <b>{{ $customer }}</b> |
-                        Dress: <b>{{ $dress }}</b> |
-                        Current Stage: <b>{{ $stageName }}</b>
-                        <span class="text-muted">| Group: #{{ $groupId }}</span>
+                        Customer: <b><?php echo e($customer); ?></b> |
+                        Dress: <b><?php echo e($dress); ?></b> |
+                        Current Stage: <b><?php echo e($stageName); ?></b>
+                        <span class="text-muted">| Group: #<?php echo e($groupId); ?></span>
                     </p>
                 </div>
 
                 <div class="text-end">
                     <div class="small text-muted">Available Qty in this stage</div>
-                    <div class="fs-4 fw-bold">{{ $item->qty }}</div>
+                    <div class="fs-4 fw-bold"><?php echo e($item->qty); ?></div>
                 </div>
             </div>
         </div>
@@ -44,33 +45,33 @@
         <div class="card-body">
             <div id="message"></div>
 
-            {{-- Explain next stage & partial handover --}}
-            @if(!$nextStage)
+            
+            <?php if(!$nextStage): ?>
                 <div class="alert alert-warning mb-3">
                     <b>No next stage found.</b> This means the workflow ends here.
                     You can mark this item as <b>Completed</b>.
                 </div>
-            @else
+            <?php else: ?>
                 <div class="alert alert-info mb-3">
-                    <div><b>Next Stage:</b> {{ $nextStage->name }}</div>
+                    <div><b>Next Stage:</b> <?php echo e($nextStage->name); ?></div>
                     <div class="small mt-1">
-                        <b>Note:</b> If you handover less than {{ $item->qty }}, the system will keep the remaining qty in
-                        <b>{{ $stageName }}</b> and create a new item for <b>{{ $nextStage->name }}</b>.
+                        <b>Note:</b> If you handover less than <?php echo e($item->qty); ?>, the system will keep the remaining qty in
+                        <b><?php echo e($stageName); ?></b> and create a new item for <b><?php echo e($nextStage->name); ?></b>.
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
 
             <form id="handoverForm">
-                @csrf
+                <?php echo csrf_field(); ?>
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Received By (Next Stage Staff)</label>
-                        <select name="received_by" class="form-select" required {{ !$nextStage ? 'disabled' : '' }}>
+                        <select name="received_by" class="form-select" required <?php echo e(!$nextStage ? 'disabled' : ''); ?>>
                             <option value="">Select Staff</option>
-                            @foreach($users as $u)
-                                <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
-                            @endforeach
+                            <?php $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $u): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($u->id); ?>"><?php echo e($u->name); ?> (<?php echo e($u->email); ?>)</option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                         <small class="text-muted">Select the staff who will work in the next stage.</small>
                     </div>
@@ -81,9 +82,9 @@
                                class="form-control"
                                name="qty"
                                min="1"
-                               max="{{ $item->qty }}"
-                               value="{{ $item->qty }}"
-                               required {{ !$nextStage ? 'disabled' : '' }}>
+                               max="<?php echo e($item->qty); ?>"
+                               value="<?php echo e($item->qty); ?>"
+                               required <?php echo e(!$nextStage ? 'disabled' : ''); ?>>
                         <small class="text-muted">
                             You can handover partial qty (Ex: 2 now, 3 later).
                         </small>
@@ -101,13 +102,13 @@
     Back
 </button>
 
-                    @if($nextStage)
+                    <?php if($nextStage): ?>
                         <button class="btn btn-primary" type="submit">
                             Save Handover
                         </button>
-                    @endif
+                    <?php endif; ?>
 
-                    {{-- Complete button --}}
+                    
                     <button type="button" class="btn btn-success" id="btnComplete">
                         Mark Completed
                     </button>
@@ -125,11 +126,11 @@
 
             const formData = new FormData(this);
 
-            fetch("{{ route('tailoring.handover.store', $item) }}", {
+            fetch("<?php echo e(route('tailoring.handover.store', $item)); ?>", {
                 method: "POST",
                 body: formData,
                 headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                    "X-CSRF-TOKEN": "<?php echo e(csrf_token()); ?>",
                     "Accept": "application/json"
                 }
             }).then(async res => {
@@ -160,10 +161,10 @@
             }).then((result) => {
                 if (!result.isConfirmed) return;
 
-                fetch("{{ route('tailoring.handover.complete', $item) }}", {
+                fetch("<?php echo e(route('tailoring.handover.complete', $item)); ?>", {
                     method: "POST",
                     headers: {
-                        "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                        "X-CSRF-TOKEN": "<?php echo e(csrf_token()); ?>",
                         "Accept": "application/json"
                     }
                 }).then(async res => {
@@ -180,4 +181,5 @@
             });
         });
     </script>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.vertical', ['subtitle' => 'Handover Create'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH F:\Personal Projects\Infotech\tailor\resources\views/tailoring/handover/create.blade.php ENDPATH**/ ?>

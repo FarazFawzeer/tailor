@@ -196,38 +196,49 @@ class HandoverController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Handover saved. Partial qty split correctly.']);
     }
-    public function complete(Request $request, JobBatchItem $item)
-    {
-        if ($item->completed_at) {
-            return response()->json(['success' => false, 'message' => 'Already completed.'], 422);
-        }
-
-        $data = $request->validate([
-            'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        DB::transaction(function () use ($item, $data) {
-            // log completion (to_stage_id = null)
-            HandoverLog::create([
-                'job_batch_item_id' => $item->id,
-                'from_stage_id' => $item->current_stage_id,
-                'to_stage_id' => null,
-                'qty' => (int)$item->qty,
-                'handed_over_by' => auth()->id(),
-                'received_by' => null,
-                'notes' => $data['notes'] ?? 'Completed',
-                'handover_at' => now(),
-            ]);
-
-            $item->update([
-                'completed_at' => now(),
-                'completed_by' => auth()->id(),
-            ]);
-        });
-
-        return response()->json(['success' => true, 'message' => 'Item marked as completed.']);
+public function complete(Request $request, JobBatchItem $item)
+{
+    if ($item->completed_at) {
+        return response()->json(['success' => false, 'message' => 'Already completed.'], 422);
     }
 
+    $item->load('stage');
+
+    if (!$item->stage) {
+        return response()->json(['success' => false, 'message' => 'Current stage not found.'], 422);
+    }
+
+    if (strtoupper($item->stage->code ?? '') !== 'DELIVERED') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Item can be completed only after it reaches the Delivering stage.'
+        ], 422);
+    }
+
+    $data = $request->validate([
+        'notes' => ['nullable', 'string', 'max:2000'],
+    ]);
+
+    DB::transaction(function () use ($item, $data) {
+        HandoverLog::create([
+            'job_batch_item_id' => $item->id,
+            'from_stage_id' => $item->current_stage_id,
+            'to_stage_id' => null,
+            'qty' => (int)$item->qty,
+            'handed_over_by' => auth()->id(),
+            'received_by' => null,
+            'notes' => $data['notes'] ?? 'Completed',
+            'handover_at' => now(),
+        ]);
+
+        $item->update([
+            'completed_at' => now(),
+            'completed_by' => auth()->id(),
+        ]);
+    });
+
+    return response()->json(['success' => true, 'message' => 'Item marked as completed.']);
+}
     public function history(JobBatchItem $item)
     {
         $item->load(['jobBatch.job.customer', 'dressType', 'stage']);

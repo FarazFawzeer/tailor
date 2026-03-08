@@ -36,7 +36,6 @@
 
         .modal-diagram-card { position: sticky; top: 10px; }
 
-        /* Price UI */
         .money { text-align:right; }
         .total-box {
             border:1px dashed rgba(0,0,0,.15);
@@ -47,6 +46,58 @@
         }
         .total-box .lbl { font-size:12px; color:#6c757d; }
         .total-box .val { font-size:18px; font-weight:800; }
+
+        /* ===== Items table responsive fix ===== */
+        .items-table {
+            min-width: 1250px;
+            table-layout: auto;
+        }
+
+        .items-table th,
+        .items-table td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .items-table .qty-col {
+            min-width: 120px;
+            width: 120px;
+        }
+
+        .items-table .qtyInput {
+            min-width: 90px;
+            width: 100%;
+        }
+
+        .items-table .price-col,
+        .items-table .total-col,
+        .items-table .mode-col {
+            min-width: 140px;
+        }
+
+        .items-table .notes-col {
+            min-width: 220px;
+            white-space: normal;
+        }
+
+        .items-table .action-col {
+            min-width: 200px;
+        }
+
+        @media (max-width: 1366px) {
+            .items-table {
+                min-width: 1350px;
+            }
+
+            .items-table .qty-col {
+                min-width: 130px;
+                width: 130px;
+            }
+
+            .items-table .qtyInput {
+                min-width: 100px;
+            }
+        }
     </style>
 
     <div class="card mb-3">
@@ -129,8 +180,8 @@
                 <div id="batchesArea"></div>
 
                 <div class="d-flex justify-content-end gap-2 mt-3">
-                    <a href="{{ route('tailoring.jobs.show', $job) }}" class="btn btn-secondary">Back</a>
-                    <button class="btn btn-primary" type="submit">Update Job</button>
+                    <a href="{{ route('tailoring.jobs.show', $job) }}" class="btn btn-secondary" style="width: 150px;">Back</a>
+                    <button class="btn btn-primary" type="submit" style="width: 150px;">Update Job</button>
                 </div>
             </form>
         </div>
@@ -183,7 +234,6 @@
             ];
         }
 
-        // ✅ include unit_price
         $jobJs = ['batches' => []];
         foreach ($job->batches as $b) {
             $batchArr = [
@@ -258,7 +308,6 @@
             return html;
         }
 
-        // ===== money helpers =====
         function money(n) {
             const x = Number(n || 0);
             return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -290,7 +339,6 @@
             document.getElementById('grandTotalText').textContent = money(total);
         }
 
-        // ===== hidden measurement store (REAL inputs) =====
         function clearHiddenMeasurements(row) {
             row.querySelectorAll('.hidden-meas').forEach(el => el.remove());
         }
@@ -341,7 +389,6 @@
             if (any && any.length > 0) markSaved(row);
         }
 
-        // ===== Batches =====
         function addBatchCard(prefill = null) {
             const idx = batchCount++;
 
@@ -394,17 +441,17 @@
                     </div>
 
                     <div class="table-responsive">
-                        <table class="table table-bordered align-middle">
+                        <table class="table table-bordered align-middle items-table">
                             <thead class="table-light">
                                 <tr>
                                     <th style="min-width:220px;">Dress Type <span class="required-star">*</span></th>
                                     <th style="min-width:220px;">Template</th>
-                                    <th style="width:110px;">Qty <span class="required-star">*</span></th>
-                                    <th style="width:140px;">Unit Price</th>
-                                    <th style="width:140px;">Line Total</th>
-                                    <th style="width:140px;">Mode</th>
-                                    <th style="min-width:200px;">Notes</th>
-                                    <th class="item-row-actions">Action</th>
+                                    <th class="qty-col">Qty <span class="required-star">*</span></th>
+                                    <th class="price-col">Unit Price</th>
+                                    <th class="total-col">Line Total</th>
+                                    <th class="mode-col">Mode</th>
+                                    <th class="notes-col">Notes</th>
+                                    <th class="action-col item-row-actions">Action</th>
                                 </tr>
                             </thead>
                             <tbody class="itemsBody"></tbody>
@@ -465,24 +512,24 @@
                     </select>
                 </td>
 
-                <td>
+                <td class="qty-col">
                     <input type="number" class="form-control qtyInput"
                         name="batches[${idx}][items][${itemIndex}][qty]"
                         value="${qty}" min="1" required>
                 </td>
 
-                <td>
+                <td class="price-col">
                     <input type="number" step="0.01" min="0"
                         class="form-control unitPriceInput money"
                         name="batches[${idx}][items][${itemIndex}][unit_price]"
                         value="${unitPrice}">
                 </td>
 
-                <td class="money">
+                <td class="money total-col">
                     <span class="lineTotalText fw-bold">0.00</span>
                 </td>
 
-                <td>
+                <td class="mode-col">
                     <div class="form-check mt-2">
                         <input class="form-check-input perPieceCheck" type="checkbox"
                             name="batches[${idx}][items][${itemIndex}][per_piece_measurement]"
@@ -491,7 +538,7 @@
                     </div>
                 </td>
 
-                <td>
+                <td class="notes-col">
                     <input type="text" class="form-control"
                         name="batches[${idx}][items][${itemIndex}][notes]"
                         value="${notes}" placeholder="Optional">
@@ -499,8 +546,8 @@
                     <div class="mt-2 measStore d-none"></div>
                 </td>
 
-                <td>
-                    <div class="d-flex gap-2">
+                <td class="action-col">
+                    <div class="d-flex flex-column flex-md-row gap-2">
                         <button type="button" class="btn btn-info btn-sm w-100 btnMeasurements">Measurements</button>
                         <button type="button" class="btn btn-danger btn-sm w-100 btnRemoveItem">Remove</button>
                     </div>
@@ -509,16 +556,13 @@
 
             tbody.appendChild(tr);
 
-            // load existing measurement inputs
             if (itemId) loadExistingHiddenMeasurements(tr);
 
-            // totals
             recalcRowTotals(tr);
             recalcBatchTotals(batchCard);
             recalcGrandTotal();
         }
 
-        // ===== modal =====
         const measurementModalEl = document.getElementById('measurementModal');
         const modalBodyContent = document.getElementById('modalBodyContent');
         const modalSubtitle = document.getElementById('modalSubtitle');
@@ -758,7 +802,6 @@
 
                 modalFormArea.innerHTML = buildMeasurementFormHtml(fields, currentPrefix, qty, perPiece);
 
-                // prefill modal from hidden inputs
                 const hiddenInputs = row.querySelectorAll('input.hidden-meas');
                 hiddenInputs.forEach(h => {
                     const target = modalFormArea.querySelector(`[name="${CSS.escape(h.name)}"]`);
@@ -773,7 +816,6 @@
             modal.show();
         }
 
-        // Save measurements to hidden inputs
         btnSaveMeasurements.addEventListener('click', function () {
             if (!currentRow) return;
 
@@ -803,7 +845,6 @@
             bootstrap.Modal.getInstance(measurementModalEl).hide();
         });
 
-        // ===== Events =====
         btnAddBatch.addEventListener('click', function() {
             addBatchCard(null);
         });
@@ -835,7 +876,6 @@
             }
         });
 
-        // dress type change -> filter templates + clear measurements
         batchesArea.addEventListener('change', function(e) {
             if (!e.target.classList.contains('dressTypeSelect')) return;
 
@@ -847,7 +887,6 @@
             clearHiddenMeasurements(row);
         });
 
-        // template change -> clear measurements
         batchesArea.addEventListener('change', function(e) {
             if (!e.target.classList.contains('templateSelect')) return;
             const row = e.target.closest('tr');
@@ -855,21 +894,18 @@
             clearHiddenMeasurements(row);
         });
 
-        // qty/perPiece change -> clear measurements
         batchesArea.addEventListener('change', function(e) {
             if (e.target.classList.contains('perPieceCheck') || e.target.classList.contains('qtyInput')) {
                 const row = e.target.closest('tr');
                 row.querySelector('.measStore').innerHTML = '';
                 clearHiddenMeasurements(row);
 
-                // totals
                 const batchCard = row.closest('.batch-card');
                 recalcBatchTotals(batchCard);
                 recalcGrandTotal();
             }
         });
 
-        // ✅ qty/price live totals
         batchesArea.addEventListener('input', function(e) {
             if (e.target.classList.contains('qtyInput') || e.target.classList.contains('unitPriceInput')) {
                 const row = e.target.closest('tr');
@@ -880,24 +916,20 @@
             }
         });
 
-        // Load existing job data
         if (JOB_DATA?.batches?.length) {
             JOB_DATA.batches.forEach(b => addBatchCard(b));
         } else {
             addBatchCard(null);
         }
 
-        // initial totals
         recalcGrandTotal();
 
-        // ===== Submit =====
         document.getElementById('wizardForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
             const box = document.getElementById('message');
             box.innerHTML = '';
 
-            // validate: template selected => hidden measurements must exist
             const rows = batchesArea.querySelectorAll('tr');
             for (const r of rows) {
                 const templateId = r.querySelector('.templateSelect')?.value;
@@ -915,7 +947,7 @@
             const formData = new FormData(this);
 
             fetch(this.action, {
-                method: "POST", // PUT via _method
+                method: "POST",
                 body: formData,
                 headers: {
                     "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value,

@@ -94,29 +94,36 @@ Swal.fire({
 
                     <tbody>
                         <?php $__empty_1 = true; $__currentLoopData = $jobs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $j): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                            <?php
-                                $totalQty = (int)($j->total_qty ?? 0);
-                                $completedQty = (int)($j->completed_qty ?? 0);
+                          <?php
+    $totalQty = (int)($j->total_qty ?? 0);
+    $completedQty = (int)($j->completed_qty ?? 0);
+    $deliveredQty = (int)($j->delivered_qty ?? 0);
 
-                                // avoid divide by zero
-                                $progressPercent = $totalQty > 0 ? (int)round(($completedQty / $totalQty) * 100) : 0;
+    // Treat Delivered stage as completed for listing
+    $doneQty = $completedQty + $deliveredQty;
 
-                                if ($totalQty === 0) {
-                                    $statusText = 'No Items';
-                                    $statusBadge = 'bg-secondary';
-                                } elseif ($completedQty >= $totalQty) {
-                                    $statusText = 'Completed';
-                                    $statusBadge = 'bg-success';
-                                } elseif ($completedQty > 0) {
-                                    $statusText = 'In Progress';
-                                    $statusBadge = 'bg-warning';
-                                } else {
-                                    $statusText = 'Pending';
-                                    $statusBadge = 'bg-danger';
-                                }
+    if ($doneQty > $totalQty) {
+        $doneQty = $totalQty;
+    }
 
-                                $amount = (float)($j->total_amount ?? 0);
-                            ?>
+    $progressPercent = $totalQty > 0 ? (int)round(($doneQty / $totalQty) * 100) : 0;
+
+    if ($totalQty === 0) {
+        $statusText = 'No Items';
+        $statusBadge = 'bg-secondary';
+    } elseif ($doneQty >= $totalQty) {
+        $statusText = 'Completed';
+        $statusBadge = 'bg-success';
+    } elseif ($doneQty > 0) {
+        $statusText = 'In Progress';
+        $statusBadge = 'bg-warning';
+    } else {
+        $statusText = 'Pending';
+        $statusBadge = 'bg-danger';
+    }
+
+    $amount = (float)($j->total_amount ?? 0);
+?>
 
                             <tr>
                                 <td>
@@ -143,7 +150,7 @@ Swal.fire({
                                     <div class="d-flex flex-wrap align-items-center gap-2">
                                         <span class="pill">Batches: <?php echo e($j->batches_count ?? 0); ?></span>
                                         <span class="pill">Items: <?php echo e($j->items_count ?? 0); ?></span>
-                                        <span class="pill">Done: <?php echo e($completedQty); ?>/<?php echo e($totalQty); ?> (<?php echo e($progressPercent); ?>%)</span>
+      <span class="pill">Done: <?php echo e($doneQty); ?>/<?php echo e($totalQty); ?> (<?php echo e($progressPercent); ?>%)</span>
                                     </div>
 
                                     <div class="progress mt-2" style="height: 6px;">

@@ -1,9 +1,9 @@
-@extends('layouts.vertical', ['subtitle' => 'Job View (Easy)'])
 
-@section('content')
-@include('layouts.partials.page-title', ['title' => 'Tailoring Jobs', 'subtitle' => 'View (Easy Screen)'])
 
-@php
+<?php $__env->startSection('content'); ?>
+<?php echo $__env->make('layouts.partials.page-title', ['title' => 'Tailoring Jobs', 'subtitle' => 'View (Easy Screen)'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
+<?php
     $highlightMap = [
         'chest' => 'zone-chest',
         'shoulder' => 'zone-shoulder',
@@ -18,7 +18,7 @@
 
     $defaultFront = asset('/images/diagrams/default-front.png');
     $defaultBack  = asset('/images/diagrams/default-back.png');
-@endphp
+?>
 
 <style>
     .pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; background: rgba(13,110,253,.08); }
@@ -71,19 +71,19 @@
     .modal-diagram-card { position: sticky; top: 10px; }
 </style>
 
-{{-- TOP SUMMARY --}}
+
 <div class="card info-card mb-3">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
             <div>
-                <h5 class="card-title mb-1">Job: {{ $job->job_no }}</h5>
+                <h5 class="card-title mb-1">Job: <?php echo e($job->job_no); ?></h5>
            <div class="muted-help">Create → Measurements → Handover stages → Delivered → Complete → Invoice</div>
             </div>
             <div class="d-flex gap-2 align-items-center">
    
-            <a href="{{ route('tailoring.jobs.index') }}" class="btn btn-outline-secondary btn-sm" style="width: 100px;">Back</a>
+            <a href="<?php echo e(route('tailoring.jobs.index')); ?>" class="btn btn-outline-secondary btn-sm" style="width: 100px;">Back</a>
       
-                <a href="{{ route('tailoring.jobs.editWizard', $job) }}" class="btn btn-outline-primary btn-sm" style="width: 100px;">Edit </a>
+                <a href="<?php echo e(route('tailoring.jobs.editWizard', $job)); ?>" class="btn btn-outline-primary btn-sm" style="width: 100px;">Edit </a>
             </div>
         </div>
     </div>
@@ -96,12 +96,14 @@
                         <div class="kv">
                             <b>Customer:</b>
                             <div>
-                                <div class="fw-semibold">{{ $job->customer?->full_name ?? '-' }}</div>
+                                <div class="fw-semibold"><?php echo e($job->customer?->full_name ?? '-'); ?></div>
                                 <div class="text-muted mini">
-                                    Phone: {{ $job->customer?->phone ?? '-' }}
-                                    @if(!empty($job->customer?->email))
-                                        | Email: {{ $job->customer?->email }}
-                                    @endif
+                                    Phone: <?php echo e($job->customer?->phone ?? '-'); ?>
+
+                                    <?php if(!empty($job->customer?->email)): ?>
+                                        | Email: <?php echo e($job->customer?->email); ?>
+
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -110,18 +112,18 @@
                     <div class="col-md-6 text-md-end">
                         <span class="stage-pill">
                             Current Stage:
-                            <b>{{ $job->currentStage?->name ?? '-' }}</b>
+                            <b><?php echo e($job->currentStage?->name ?? '-'); ?></b>
                         </span>
                     </div>
 
                     <div class="col-md-3">
-                        <div class="kv"><b>Job Date:</b> <span>{{ $job->job_date?->format('d M Y') ?? '-' }}</span></div>
+                        <div class="kv"><b>Job Date:</b> <span><?php echo e($job->job_date?->format('d M Y') ?? '-'); ?></span></div>
                     </div>
                     <div class="col-md-3">
-                        <div class="kv"><b>Due Date:</b> <span>{{ $job->due_date?->format('d M Y') ?? '-' }}</span></div>
+                        <div class="kv"><b>Due Date:</b> <span><?php echo e($job->due_date?->format('d M Y') ?? '-'); ?></span></div>
                     </div>
                     <div class="col-md-">
-                        <div class="kv"><b>Notes:</b> <span>{{ $job->notes ?? '-' }}</span></div>
+                        <div class="kv"><b>Notes:</b> <span><?php echo e($job->notes ?? '-'); ?></span></div>
                     </div>
                 </div>
             </div>
@@ -129,13 +131,13 @@
             <div class="col-lg-4">
                 <div class="price-box">
                     <div class="label">Total Job Amount</div>
-                    <div class="val">{{ number_format((float)$totalAmount, 2) }}</div>
+                    <div class="val"><?php echo e(number_format((float)$totalAmount, 2)); ?></div>
                     <div class="muted-help">Based on Qty × Unit Price</div>
 
                     <div class="d-flex justify-content-end gap-2 mt-2">
-                        {{-- Later you can add invoice route --}}
+                        
        <a class="btn btn-success btn-sm text-white" 
-   href="{{ route('tailoring.jobs.invoicePdf', $job) }}"
+   href="<?php echo e(route('tailoring.jobs.invoicePdf', $job)); ?>"
    target="_blank">
    Generate Invoice
 </a>
@@ -148,7 +150,7 @@
     </div>
 </div>
 
-{{-- STAGE DASHBOARD (5 in same row) --}}
+
 <div class="card info-card mb-3">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
@@ -156,31 +158,31 @@
                 <h5 class="card-title mb-0">Stage Summary</h5>
                 <div class="muted-help">Total qty & items in each stage</div>
             </div>
-     <span class="pill">{{ $stages->count() }} Stages</span>
+     <span class="pill"><?php echo e($stages->count()); ?> Stages</span>
         </div>
     </div>
     <div class="card-body">
         <div class="row g-2 flex-nowrap" style="overflow-x:auto;">
-            @foreach($stages as $s)
-                @php
+            <?php $__currentLoopData = $stages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php
                     $stat = $stageStats[$s->id] ?? ['items_count'=>0,'qty_sum'=>0];
-                @endphp
+                ?>
                 <div class="col" style="min-width:190px;">
                     <div class="stage-chip">
                         <div class="d-flex justify-content-between">
-                            <div class="name">{{ $s->name }}</div>
-                            <span class="badge bg-light text-dark">Stage {{ $s->sort_order }}</span>
+                            <div class="name"><?php echo e($s->name); ?></div>
+                            <span class="badge bg-light text-dark">Stage <?php echo e($s->sort_order); ?></span>
                         </div>
-                        <div class="qty mt-2">{{ (int)$stat['qty_sum'] }}</div>
-                        <div class="meta">{{ (int)$stat['items_count'] }} items</div>
+                        <div class="qty mt-2"><?php echo e((int)$stat['qty_sum']); ?></div>
+                        <div class="meta"><?php echo e((int)$stat['items_count']); ?> items</div>
                     </div>
                 </div>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </div>
     </div>
 </div>
 
-{{-- HANDOVER CENTER (GROUPED, CLEAR) --}}
+
 <div class="card info-card mb-3">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
@@ -193,47 +195,50 @@
     </div>
 
     <div class="card-body">
-        @forelse($groups as $g)
+        <?php $__empty_1 = true; $__currentLoopData = $groups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $g): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <div class="group-card mb-3">
                 <div class="group-head">
                     <div>
                         <div class="fw-semibold">
-                           {{ $g['dress_name'] }}
-                            <span class="text-muted mini">| Total Qty: <b>{{ $g['total_qty'] }}</b></span>
+                           <?php echo e($g['dress_name']); ?>
+
+                            <span class="text-muted mini">| Total Qty: <b><?php echo e($g['total_qty']); ?></b></span>
                         </div>
                         <div class="text-muted mini">
-                            Template: {{ $g['template_name'] }}
-                            | Unit Price: {{ number_format((float)$g['unit_price'], 2) }}
-                            | Total: <b>{{ number_format((float)$g['line_total'], 2) }}</b>
+                            Template: <?php echo e($g['template_name']); ?>
+
+                            | Unit Price: <?php echo e(number_format((float)$g['unit_price'], 2)); ?>
+
+                            | Total: <b><?php echo e(number_format((float)$g['line_total'], 2)); ?></b>
                         </div>
                     </div>
 
                     <div class="d-flex gap-2 flex-wrap">
-                        <a href="{{ route('tailoring.handover.group.create', $g['group_id']) }}" class="btn btn-primary btn-sm" style="width: 150px">
+                        <a href="<?php echo e(route('tailoring.handover.group.create', $g['group_id'])); ?>" class="btn btn-primary btn-sm" style="width: 150px">
                             Group Handover
                         </a>
 
-                        @if(!empty($g['history_item_id']))
-                            <a href="{{ route('tailoring.handover.history', $g['history_item_id']) }}" class="btn btn-outline-dark btn-sm" style="width: 150px">
+                        <?php if(!empty($g['history_item_id'])): ?>
+                            <a href="<?php echo e(route('tailoring.handover.history', $g['history_item_id'])); ?>" class="btn btn-outline-dark btn-sm" style="width: 150px">
                                 History
                             </a>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="group-body">
-                    {{-- Stage-wise qty chips --}}
+                    
                     <div class="d-flex gap-2 flex-wrap mb-3">
-                        @foreach($stages as $s)
-                            @php $sq = (int)($g['stage_qty'][$s->id] ?? 0); @endphp
+                        <?php $__currentLoopData = $stages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php $sq = (int)($g['stage_qty'][$s->id] ?? 0); ?>
                             <span class="stage-pill">
-                                {{ $s->name }}:
-                                <b>{{ $sq }}</b>
+                                <?php echo e($s->name); ?>:
+                                <b><?php echo e($sq); ?></b>
                             </span>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </div>
 
-                    {{-- Items in this group (for single handover) --}}
+                    
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered align-middle">
                             <thead class="table-light">
@@ -246,48 +251,48 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($g['items'] as $row)
+                                <?php $__currentLoopData = $g['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <tr>
-                                        <td>{{ $row->jobBatch?->batch_no ?? '-' }}</td>
-                                        <td class="fw-bold">{{ $row->qty }}</td>
+                                        <td><?php echo e($row->jobBatch?->batch_no ?? '-'); ?></td>
+                                        <td class="fw-bold"><?php echo e($row->qty); ?></td>
                                         <td>
-                                            <span class="badge bg-info">{{ $row->stage?->name ?? 'N/A' }}</span>
-                                            @if($row->parent_item_id)
+                                            <span class="badge bg-info"><?php echo e($row->stage?->name ?? 'N/A'); ?></span>
+                                            <?php if($row->parent_item_id): ?>
                                                 <span class="badge bg-warning ms-1">Part</span>
-                                            @endif
-                                            @if($row->completed_at)
+                                            <?php endif; ?>
+                                            <?php if($row->completed_at): ?>
                                                 <span class="badge bg-success ms-1">Completed</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </td>
-                                        <td class="text-muted">{{ $row->notes ?? '-' }}</td>
+                                        <td class="text-muted"><?php echo e($row->notes ?? '-'); ?></td>
                                         <td>
                                             <div class="d-flex gap-2">
-                                                <a class="btn btn-outline-primary btn-sm w-100 {{ $row->completed_at ? 'disabled' : '' }}"
-                                                   href="{{ $row->completed_at ? '#' : route('tailoring.handover.create', $row) }}" style="width: 150px;">
+                                                <a class="btn btn-outline-primary btn-sm w-100 <?php echo e($row->completed_at ? 'disabled' : ''); ?>"
+                                                   href="<?php echo e($row->completed_at ? '#' : route('tailoring.handover.create', $row)); ?>" style="width: 150px;">
                                                     Single Handover
                                                 </a>
 
                                                 <a class="btn btn-outline-dark btn-sm w-100"
-                                                   href="{{ route('tailoring.measurements.edit', [$job, $row->jobBatch, $row]) }}"  style="width: 150px;">
+                                                   href="<?php echo e(route('tailoring.measurements.edit', [$job, $row->jobBatch, $row])); ?>"  style="width: 150px;">
                                                     Measurements
                                                 </a>
                                             </div>
                                         </td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </tbody>
                         </table>
                     </div>
 
                 </div>
             </div>
-        @empty
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
             <div class="text-center text-muted py-4">No items found.</div>
-        @endforelse
+        <?php endif; ?>
     </div>
 </div>
 
-{{-- OPTIONAL: YOUR OLD BATCHES VIEW (KEEP FOR REFERENCE) --}}
+
 <div class="card info-card">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
@@ -300,15 +305,17 @@
     </div>
 
     <div class="card-body">
-        @forelse($job->batches as $batch)
+        <?php $__empty_1 = true; $__currentLoopData = $job->batches; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $batch): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <div class="border rounded-3 p-3 mb-3">
                 <div class="d-flex justify-content-between flex-wrap gap-2">
                     <div>
-                        <div class="fw-semibold">{{ $batch->batch_no }}</div>
+                        <div class="fw-semibold"><?php echo e($batch->batch_no); ?></div>
                         <div class="text-muted mini">
-                            Batch Date: {{ $batch->batch_date?->format('d M Y') ?? '-' }}
-                            | Due: {{ $batch->due_date?->format('d M Y') ?? '-' }}
-                            @if($batch->notes) | Notes: {{ $batch->notes }} @endif
+                            Batch Date: <?php echo e($batch->batch_date?->format('d M Y') ?? '-'); ?>
+
+                            | Due: <?php echo e($batch->due_date?->format('d M Y') ?? '-'); ?>
+
+                            <?php if($batch->notes): ?> | Notes: <?php echo e($batch->notes); ?> <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -328,8 +335,8 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($batch->items as $it)
-                                @php
+                            <?php $__empty_2 = true; $__currentLoopData = $batch->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $it): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_2 = false; ?>
+                                <?php
                                     $frontImg = $it->dressType?->diagram_front ? asset($it->dressType->diagram_front) : $defaultFront;
                                     $backImg  = $it->dressType?->diagram_back  ? asset($it->dressType->diagram_back)  : $defaultBack;
 
@@ -374,56 +381,56 @@
                                             'existing' => $existing,
                                         ];
                                     }
-                                @endphp
+                                ?>
 
                                 <tr>
-                                    <td>{{ $it->dressType?->name ?? '-' }}</td>
-                                    <td>{{ $it->measurementTemplate?->name ?? '-' }}</td>
-                                    <td>{{ $it->qty }}</td>
+                                    <td><?php echo e($it->dressType?->name ?? '-'); ?></td>
+                                    <td><?php echo e($it->measurementTemplate?->name ?? '-'); ?></td>
+                                    <td><?php echo e($it->qty); ?></td>
                                     <td>
-                                        @if($it->per_piece_measurement)
+                                        <?php if($it->per_piece_measurement): ?>
                                             <span class="badge bg-warning">Per Piece</span>
-                                        @else
+                                        <?php else: ?>
                                             <span class="badge bg-success">Same</span>
-                                        @endif
+                                        <?php endif; ?>
                                     </td>
-                                    <td>{{ number_format((float)$it->unit_price, 2) }}</td>
-                                    <td class="fw-bold">{{ number_format((float)$it->line_total, 2) }}</td>
-                                    <td>{{ $it->notes ?? '-' }}</td>
+                                    <td><?php echo e(number_format((float)$it->unit_price, 2)); ?></td>
+                                    <td class="fw-bold"><?php echo e(number_format((float)$it->line_total, 2)); ?></td>
+                                    <td><?php echo e($it->notes ?? '-'); ?></td>
                                     <td>
                                         <div class="d-grid gap-2">
-                                            @if($payload)
+                                            <?php if($payload): ?>
                                                 <button type="button"
                                                     class="btn btn-info btn-sm btnViewMeasurements"
-                                                    data-payload='@json($payload)'>
+                                                    data-payload='<?php echo json_encode($payload, 15, 512) ?>'>
                                                     View in Screen
                                                 </button>
-                                            @endif
+                                            <?php endif; ?>
 
                                             <a class="btn btn-outline-dark btn-sm"
-                                                href="{{ route('tailoring.measurements.edit', [$job, $batch, $it]) }}">
+                                                href="<?php echo e(route('tailoring.measurements.edit', [$job, $batch, $it])); ?>">
                                                 Open Measurements 
                                             </a>
                                         </div>
                                     </td>
                                 </tr>
-                            @empty
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_2): ?>
                                 <tr>
                                     <td colspan="8" class="text-center text-muted">No items in this batch.</td>
                                 </tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
 
             </div>
-        @empty
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
             <div class="text-center text-muted py-4">No batches yet.</div>
-        @endforelse
+        <?php endif; ?>
     </div>
 </div>
 
-{{-- MEASUREMENTS VIEW MODAL (READ ONLY) --}}
+
 <div class="modal fade" id="viewMeasurementModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -447,7 +454,7 @@
 </div>
 
 <script>
-    const HIGHLIGHT_MAP = @json($highlightMap);
+    const HIGHLIGHT_MAP = <?php echo json_encode($highlightMap, 15, 512) ?>;
 
     const vmModalEl = document.getElementById('viewMeasurementModal');
     const vmBody = document.getElementById('vmBody');
@@ -640,4 +647,5 @@
         modal.show();
     });
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.vertical', ['subtitle' => 'Job View (Easy)'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH F:\Personal Projects\Infotech\tailor\resources\views/tailoring/jobs/show.blade.php ENDPATH**/ ?>

@@ -1,20 +1,20 @@
-@extends('layouts.vertical', ['subtitle' => 'Group Handover'])
 
-@section('content')
-    @include('layouts.partials.page-title', ['title' => 'Handover', 'subtitle' => 'Group'])
 
-    @php
+<?php $__env->startSection('content'); ?>
+    <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Handover', 'subtitle' => 'Group'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
+    <?php
         $jobNo   = $headerItem->jobBatch?->job?->job_no ?? '-';
         $batchNo = $headerItem->jobBatch?->batch_no ?? '-';
         $customer = $headerItem->jobBatch?->job?->customer?->full_name ?? 'N/A';
         $dress = $headerItem->dressType?->name ?? 'N/A';
-    @endphp
+    ?>
 
     <div class="card mb-3">
         <div class="card-header">
-            <h5 class="card-title mb-1">Job: {{ $jobNo }} | Batch: {{ $batchNo }}</h5>
+            <h5 class="card-title mb-1">Job: <?php echo e($jobNo); ?> | Batch: <?php echo e($batchNo); ?></h5>
             <p class="card-subtitle mb-0">
-                Customer: <b>{{ $customer }}</b> | Dress: <b>{{ $dress }}</b> | Group: <b>#{{ $groupId }}</b>
+                Customer: <b><?php echo e($customer); ?></b> | Dress: <b><?php echo e($dress); ?></b> | Group: <b>#<?php echo e($groupId); ?></b>
             </p>
         </div>
 
@@ -26,31 +26,31 @@
             </div>
 
             <div class="row g-2 mb-3">
-                @foreach($stageSummary as $s)
+                <?php $__currentLoopData = $stageSummary; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <div class="col-md-3">
                         <div class="border rounded p-2">
-                            <div class="text-muted small">{{ $s['stage_name'] }}</div>
-                            <div class="fs-4 fw-bold">{{ $s['qty'] }}</div>
+                            <div class="text-muted small"><?php echo e($s['stage_name']); ?></div>
+                            <div class="fs-4 fw-bold"><?php echo e($s['qty']); ?></div>
                         </div>
                     </div>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
 
             <div id="message"></div>
 
             <form id="groupHandoverForm">
-                @csrf
+                <?php echo csrf_field(); ?>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">From Stage</label>
                         <select name="from_stage_id" id="from_stage_id" class="form-select" required>
                             <option value="">Select stage</option>
-                            @foreach($stageSummary as $s)
-                                <option value="{{ $s['stage_id'] }}" data-qty="{{ $s['qty'] }}">
-                                    {{ $s['stage_name'] }} (Available: {{ $s['qty'] }})
+                            <?php $__currentLoopData = $stageSummary; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($s['stage_id']); ?>" data-qty="<?php echo e($s['qty']); ?>">
+                                    <?php echo e($s['stage_name']); ?> (Available: <?php echo e($s['qty']); ?>)
                                 </option>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                         <small class="text-muted">Choose which stage you are sending from.</small>
                     </div>
@@ -66,9 +66,9 @@
                         <label class="form-label">Received By (Next Stage Staff)</label>
                         <select name="received_by" class="form-select" required>
                             <option value="">Select Staff</option>
-                            @foreach($users as $u)
-                                <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
-                            @endforeach
+                            <?php $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $u): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($u->id); ?>"><?php echo e($u->name); ?> (<?php echo e($u->email); ?>)</option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
                 </div>
@@ -106,11 +106,11 @@
 
             const formData = new FormData(this);
 
-            fetch("{{ route('tailoring.handover.group.store', $groupId) }}", {
+            fetch("<?php echo e(route('tailoring.handover.group.store', $groupId)); ?>", {
                 method: "POST",
                 body: formData,
                 headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                    "X-CSRF-TOKEN": "<?php echo e(csrf_token()); ?>",
                     "Accept": "application/json"
                 }
             }).then(async res => {
@@ -128,4 +128,5 @@
             });
         });
     </script>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.vertical', ['subtitle' => 'Group Handover'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH F:\Personal Projects\Infotech\tailor\resources\views/tailoring/handover/group_create.blade.php ENDPATH**/ ?>
