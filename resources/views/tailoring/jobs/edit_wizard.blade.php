@@ -234,10 +234,19 @@
             ];
         }
 
+        $cuttersJs = [];
+foreach ($cutters as $u) {
+    $cuttersJs[] = [
+        'id' => $u->id,
+        'name' => $u->name,
+    ];
+}
+
         $jobJs = ['batches' => []];
         foreach ($job->batches as $b) {
             $batchArr = [
                 'id' => $b->id,
+                 'batch_no' => $b->batch_no,
                 'batch_date' => optional($b->batch_date)->toDateString(),
                 'due_date' => optional($b->due_date)->toDateString(),
                 'notes' => $b->notes,
@@ -253,6 +262,7 @@
                     'unit_price' => (float)($it->unit_price ?? 0),
                     'per_piece_measurement' => (bool)$it->per_piece_measurement,
                     'notes' => $it->notes,
+                       'assigned_cutter_id' => $it->assigned_cutter_id, // NEW
                 ];
             }
 
@@ -268,6 +278,7 @@
         const TEMPLATES   = @json($templatesJs);
         const JOB_DATA    = @json($jobJs);
         const EXISTING_MEASUREMENTS = @json($existingMeasurements ?? []);
+const CUTTERS = @json($cuttersJs);
 
         const DEFAULT_FRONT = @json($defaultFront);
         const DEFAULT_BACK  = @json($defaultBack);
@@ -423,11 +434,18 @@
                                    value="${prefill?.due_date || ''}">
                         </div>
 
-                        <div class="col-md-6 mb-2">
+                        <div class="col-md-3 mb-2">
                             <label class="form-label">Batch Notes</label>
                             <input type="text" class="form-control" name="batches[${idx}][notes]"
                                    value="${prefill?.notes || ''}" placeholder="Optional">
                         </div>
+
+                        <div class="col-md-3 mb-2">
+    <label class="form-label">Default Cutter <span class="text-muted">(applies to new items)</span></label>
+    <select class="form-select batchDefaultCutter">
+        ${optionCutters('')}
+    </select>
+</div>
                     </div>
 
                     <hr class="my-3">
@@ -491,6 +509,7 @@
             const unitPrice = Number(prefillItem?.unit_price || 0);
             const perPiece = prefillItem?.per_piece_measurement ? true : false;
             const notes = prefillItem?.notes || '';
+const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
 
             const tr = document.createElement('tr');
             tr.dataset.itemIndex = itemIndex;
@@ -538,6 +557,12 @@
                     </div>
                 </td>
 
+                <td style="min-width:180px;">
+    <select class="form-select assignedCutterSelect" required
+        name="batches[${idx}][items][${itemIndex}][assigned_cutter_id]">
+        ${optionCutters(assignedCutterId || (batchCard.querySelector('.batchDefaultCutter')?.value || ''))}
+    </select>
+</td>
                 <td class="notes-col">
                     <input type="text" class="form-control"
                         name="batches[${idx}][items][${itemIndex}][notes]"
@@ -816,34 +841,96 @@
             modal.show();
         }
 
-        btnSaveMeasurements.addEventListener('click', function () {
-            if (!currentRow) return;
+       btnSaveMeasurements.addEventListener('click', function () {
+    if (!currentRow) return;
 
-            const templateId = currentRow.querySelector('.templateSelect').value;
-            if (templateId) {
-                const anyInput = modalBodyContent.querySelector('input[name*="[measurements]"]');
-                if (!anyInput) {
-                    modalWarn.textContent = "This template has no measurement fields.";
-                    modalWarn.classList.remove('d-none');
-                    return;
-                }
-            }
+    const templateId = currentRow.querySelector('.templateSelect').value;
+    if (templateId) {
+        const anyInput = modalBodyContent.querySelector('input[name*="[measurements]"]');
+        if (!anyInput) {
+            modalWarn.textContent = "This template has no measurement fields.";
+            modalWarn.classList.remove('d-none');
+            return;
+        }
+    }
 
-            clearHiddenMeasurements(currentRow);
+    clearHiddenMeasurements(currentRow);
 
-            const modalFormArea = modalBodyContent.querySelector('#modalFormArea');
+    const modalFormArea = modalBodyContent.querySelector('#modalFormArea');
 
-            modalFormArea.querySelectorAll('input[name*="[measurements]"]').forEach(inp => {
-                addHidden(currentRow, inp.name, inp.value);
+    modalFormArea.querySelectorAll('input[name*="[measurements]"]').forEach(inp => {
+        addHidden(currentRow, inp.name, inp.value);
+    });
+
+    modalFormArea.querySelectorAll('input[name*="[notes_map]"]').forEach(inp => {
+        addHidden(currentRow, inp.name, inp.value);
+    });
+
+    markSaved(currentRow);
+
+    // ✅ Build print payload using real job_no (already known in edit mode)
+    const printPayload = buildPrintPayloadFromRow(currentRow, modalFormArea, templateId);
+
+    bootstrap.Modal.getInstance(measurementModalEl).hide();
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Measurements Saved',
+        text: 'Do you want to print the measurement receipt?',
+        showCancelButton: true,
+        confirmButtonText: 'Print',
+        cancelButtonText: 'Not now'
+    }).then(result => {
+        if (result.isConfirmed) {
+            printMeasurementReceipt(printPayload);
+        }
+    });
+});
+
+function buildPrintPayloadFromRow(row, modalFormArea, templateId) {
+    const dressName = row.querySelector('.dressTypeSelect')?.selectedOptions?.[0]?.textContent ?? '';
+    const templateName = row.querySelector('.templateSelect')?.selectedOptions?.[0]?.textContent ?? '';
+    const qty = row.querySelector('.qtyInput')?.value || '';
+    const itemNotes = row.querySelector('input[name*="[notes]"]:not([name*="notes_map"])')?.value || '';
+    const perPiece = row.querySelector('.perPieceCheck')?.checked;
+
+    const pieces = [];
+
+    if (templateId) {
+        if (!perPiece) {
+            const fields = [];
+            modalFormArea.querySelectorAll('input[name*="[measurements][same]"]').forEach(inp => {
+                const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent?.trim() || inp.name;
+                fields.push({ label: label.replace(/\*$/, '').trim(), unit: '', value: inp.value });
             });
-
-            modalFormArea.querySelectorAll('input[name*="[notes_map]"]').forEach(inp => {
-                addHidden(currentRow, inp.name, inp.value);
+            const notesInput = modalFormArea.querySelector('input[name*="[notes_map][same]"]');
+            pieces.push({ title: 'All Pieces (Same)', fields, notes: notesInput?.value || '' });
+        } else {
+            const tabPanes = modalFormArea.querySelectorAll('.tab-pane');
+            tabPanes.forEach((pane, idx) => {
+                const pieceNo = idx + 1;
+                const fields = [];
+                pane.querySelectorAll(`input[name*="[measurements][${pieceNo}]"]`).forEach(inp => {
+                    const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent?.trim() || inp.name;
+                    fields.push({ label: label.replace(/\*$/, '').trim(), unit: '', value: inp.value });
+                });
+                const notesInput = pane.querySelector(`input[name*="[notes_map][${pieceNo}]"]`);
+                pieces.push({ title: `Piece ${pieceNo}`, fields, notes: notesInput?.value || '' });
             });
+        }
+    }
 
-            markSaved(currentRow);
-            bootstrap.Modal.getInstance(measurementModalEl).hide();
-        });
+    return {
+        job_no: '{{ $job->job_no }}',
+        batch_no: 'See Batch', // overridden below per row
+        dress_name: dressName,
+        template_name: templateName,
+        qty,
+        per_piece: perPiece,
+        pieces,
+        item_notes: itemNotes
+    };
+}
 
         btnAddBatch.addEventListener('click', function() {
             addBatchCard(null);

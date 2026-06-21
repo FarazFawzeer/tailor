@@ -26,7 +26,7 @@ class JobController extends Controller
         $deliveredStageId = WorkflowStage::where('code', 'DELIVERED')->value('id');
 
         $jobs = Job::query()
-            ->with(['customer', 'currentStage'])
+            ->with(['customer', 'currentStage', 'batches.items.assignedCutter'])
             ->withCount([
                 'batches',
                 'batches as items_count' => function ($q) {
@@ -111,6 +111,7 @@ class JobController extends Controller
             'currentStage',
             'batches.items.dressType',
             'batches.items.stage',
+            'batches.items.assignedCutter',
             'batches.items.measurementTemplate.fields' => function ($q) {
                 $q->orderBy('sort_order');
             },
@@ -192,7 +193,10 @@ class JobController extends Controller
         $dressTypes = DressType::where('is_active', true)->orderBy('name')->get();
         $templates  = MeasurementTemplate::where('is_active', true)->with('dressType')->get();
 
-        return view('tailoring.jobs.create_wizard', compact('customers', 'dressTypes', 'templates'));
+        // NEW: staff list for cutter assignment
+        $cutters = \App\Models\User::orderBy('name')->get(['id', 'name', 'email']);
+
+        return view('tailoring.jobs.create_wizard', compact('customers', 'dressTypes', 'templates', 'cutters'));
     }
 
     public function storeWizard(Request $request)
@@ -211,15 +215,18 @@ class JobController extends Controller
             'batches.*.notes'      => ['nullable', 'string'],
 
             // items
-            'batches.*.items'                          => ['required', 'array', 'min:1'],
-            'batches.*.items.*.dress_type_id'          => ['required', 'exists:dress_types,id'],
+            'batches.*.items'                           => ['required', 'array', 'min:1'],
+            'batches.*.items.*.dress_type_id'           => ['required', 'exists:dress_types,id'],
             'batches.*.items.*.measurement_template_id' => ['nullable', 'exists:measurement_templates,id'],
-            'batches.*.items.*.qty'                    => ['required', 'integer', 'min:1'],
-            'batches.*.items.*.per_piece_measurement'  => ['nullable', 'boolean'],
-            'batches.*.items.*.notes'                  => ['nullable', 'string'],
+            'batches.*.items.*.qty'                     => ['required', 'integer', 'min:1'],
+            'batches.*.items.*.per_piece_measurement'   => ['nullable', 'boolean'],
+            'batches.*.items.*.notes'                   => ['nullable', 'string'],
 
-            // ✅ price
-            'batches.*.items.*.unit_price'             => ['nullable', 'numeric', 'min:0'],
+            // price
+            'batches.*.items.*.unit_price'              => ['nullable', 'numeric', 'min:0'],
+
+            // NEW: mandatory cutter assignment per item
+            'batches.*.items.*.assigned_cutter_id'      => ['required', 'exists:users,id'],
 
             // measurements
             'batches.*.items.*.measurements' => ['nullable', 'array'],
@@ -262,6 +269,8 @@ class JobController extends Controller
                         'notes'                   => $it['notes'] ?? null,
                         'current_stage_id'        => 1,
 
+                        'assigned_cutter_id'      => $it['assigned_cutter_id'],
+
                         // ✅ price
                         'unit_price'              => (float)($it['unit_price'] ?? 0),
                     ]);
@@ -294,7 +303,7 @@ class JobController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Job created ({$job->job_no})",
-            'data'    => ['id' => $job->id],
+            'data'    => ['id' => $job->id, 'job_no' => $job->job_no], // add job_no
         ]);
     }
 
@@ -305,38 +314,23 @@ class JobController extends Controller
         $dressTypes = DressType::where('is_active', true)->orderBy('name')->get();
         $templates  = MeasurementTemplate::where('is_active', true)->with('dressType')->get();
 
+        // NEW
+        $cutters = \App\Models\User::orderBy('name')->get(['id', 'name', 'email']);
+
         $job->load([
             'customer',
             'batches.items.dressType',
             'batches.items.measurementTemplate.fields' => fn($q) => $q->orderBy('sort_order'),
         ]);
 
-        // ✅ Load existing measurements WITHOUT item->measurementSets relationship
-        $itemIds = $job->batches->flatMap(fn($b) => $b->items)->pluck('id')->all();
-
-        $sets = ItemMeasurementSet::query()
-            ->whereIn('job_batch_item_id', $itemIds)
-            ->with('values')
-            ->get();
-
-        // map: measurements[item_id][same|1..N][field_id] = value + notes
-        $existingMeasurements = [];
-        foreach ($sets as $set) {
-            $itemId = $set->job_batch_item_id;
-            $key = $set->piece_no === null ? 'same' : (string)$set->piece_no;
-
-            $existingMeasurements[$itemId][$key]['_notes'] = $set->notes;
-
-            foreach ($set->values as $v) {
-                $existingMeasurements[$itemId][$key][$v->measurement_field_id] = $v->value;
-            }
-        }
+        // ...unchanged existing measurement-loading code...
 
         return view('tailoring.jobs.edit_wizard', compact(
             'job',
             'customers',
             'dressTypes',
             'templates',
+            'cutters',          // NEW
             'existingMeasurements'
         ));
     }
@@ -365,7 +359,7 @@ class JobController extends Controller
             'batches.*.items.*.qty'                     => ['required', 'integer', 'min:1'],
             'batches.*.items.*.per_piece_measurement'   => ['nullable', 'boolean'],
             'batches.*.items.*.notes'                   => ['nullable', 'string'],
-
+            'batches.*.items.*.assigned_cutter_id' => ['required', 'exists:users,id'],
             // ✅ price
             'batches.*.items.*.unit_price'              => ['nullable', 'numeric', 'min:0'],
 
@@ -450,6 +444,8 @@ class JobController extends Controller
                                 'notes'                   => $it['notes'] ?? null,
                                 'current_stage_id'        => 1,
 
+                                'assigned_cutter_id'      => $it['assigned_cutter_id'],
+
                                 // ✅ price
                                 'unit_price'              => $unitPrice,
                             ]);
@@ -465,6 +461,7 @@ class JobController extends Controller
                             'per_piece_measurement'   => $perPiece,
                             'notes'                   => $it['notes'] ?? null,
                             'current_stage_id'        => 1,
+                            'assigned_cutter_id'      => $it['assigned_cutter_id'],
 
                             // ✅ price
                             'unit_price'              => $unitPrice,

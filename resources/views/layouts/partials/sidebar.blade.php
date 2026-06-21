@@ -17,7 +17,7 @@
         // Section detection
         // =========================
         $isTailoring = request()->is('tailoring/*') || request()->routeIs('tailoring.*');
-        $isHiring    = request()->is('hiring/*') || request()->routeIs('hiring.*');
+        $isHiring = request()->is('hiring/*') || request()->routeIs('hiring.*');
 
         $isAdminSection =
             request()->routeIs('admin.users.*') ||
@@ -29,54 +29,126 @@
             request()->routeIs('workflow-stages.*');
 
         // Expand collapses automatically when inside section
-        $expandHiring    = $isHiring ? 'true' : 'false';
+        $expandHiring = $isHiring ? 'true' : 'false';
         $expandTailoring = $isTailoring ? 'true' : 'false';
     @endphp
 
     <style>
+        .app-sidebar {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .app-sidebar .logo-box {
+            flex-shrink: 0;
+        }
+
+        .app-sidebar .scrollbar {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
         /* Section Titles */
-        .menu-title.section-title{
+        .menu-title.section-title {
             margin: 14px 12px 8px;
             padding: 8px 12px;
-   
             font-weight: 700;
             font-size: 12px;
             letter-spacing: .04em;
             text-transform: uppercase;
-            background: rgba(13,110,253,.08);
- 
-            border: 1px solid rgba(13,110,253,.15);
+            background: rgba(13, 110, 253, .08);
+            border: 1px solid rgba(13, 110, 253, .15);
         }
 
-        /* Subtle separator for blocks */
-        .menu-divider{
+        .menu-divider {
             margin: 10px 12px;
             height: 1px;
-            background: rgba(0,0,0,.08);
+            background: rgba(0, 0, 0, .08);
         }
 
-        /* Make main menu arrows look clean */
-        .nav-link.menu-arrow{
+        .nav-link.menu-arrow {
             border-radius: 12px;
             padding: 10px 12px;
             transition: all .15s ease;
         }
-        .nav-link.menu-arrow:hover{
-            background: rgba(13,110,253,.06);
+
+        .nav-link.menu-arrow:hover {
+            background: rgba(13, 110, 253, .06);
         }
 
-        /* Highlight section (Tailoring/Hiring) when active */
-        .nav-item.section-active > .nav-link{
-            background: rgba(13,110,253,.10);
-            border: 1px solid rgba(13,110,253,.20);
+        .nav-item.section-active>.nav-link {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
         }
 
-        /* Sub menu links */
-        .sub-navbar-nav .sub-nav-link{
+        .sub-navbar-nav .sub-nav-link {
             border-radius: 10px;
             padding: 8px 12px;
         }
-     
+
+        /* Better mobile sidebar scrolling */
+        @media (max-width: 991.98px) {
+            .app-sidebar {
+                height: 100vh;
+                max-height: 100vh;
+            }
+
+            .app-sidebar .scrollbar {
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        /* Section Titles */
+        .menu-title.section-title {
+            margin: 14px 12px 8px;
+            padding: 8px 12px;
+
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            background: rgba(13, 110, 253, .08);
+
+            border: 1px solid rgba(13, 110, 253, .15);
+        }
+
+        /* Subtle separator for blocks */
+        .menu-divider {
+            margin: 10px 12px;
+            height: 1px;
+            background: rgba(0, 0, 0, .08);
+        }
+
+        /* Make main menu arrows look clean */
+        .nav-link.menu-arrow {
+            border-radius: 12px;
+            padding: 10px 12px;
+            transition: all .15s ease;
+        }
+
+        .nav-link.menu-arrow:hover {
+            background: rgba(13, 110, 253, .06);
+        }
+
+        /* Highlight section (Tailoring/Hiring) when active */
+        /* Remove highlight for active section */
+        .nav-item.section-active>.nav-link {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+        }
+
+        /* Sub menu links */
+        .sub-navbar-nav .sub-nav-link {
+            border-radius: 10px;
+            padding: 8px 12px;
+        }
     </style>
 
     <div class="scrollbar" data-simplebar>
@@ -86,7 +158,7 @@
                 FIXED SECTION
             ========================== --}}
 
-                  <li class="menu-title section-title">System Setup</li>
+            <li class="menu-title section-title">System Setup</li>
 
             {{-- ADMIN (only super_admin/admin) --}}
             @role('super_admin|admin')
@@ -276,7 +348,7 @@
                 </li>
             @endrole
 
-                 {{-- PROFILE (everyone) --}}
+            {{-- PROFILE (everyone) --}}
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.profile.edit') ? 'active' : '' }}"
                     href="{{ route('admin.profile.edit') }}">
@@ -299,8 +371,7 @@
             @role('super_admin|admin|front_desk')
                 <li class="nav-item {{ $isTailoring ? 'section-active' : '' }}">
                     <a class="nav-link menu-arrow" href="#sidebarTailoring" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ $expandTailoring }}"
-                        aria-controls="sidebarTailoring">
+                        aria-expanded="{{ $expandTailoring }}" aria-controls="sidebarTailoring">
                         <span class="nav-icon">
                             <iconify-icon icon="solar:clipboard-list-outline"></iconify-icon>
                         </span>
@@ -349,8 +420,7 @@
             @role('super_admin|admin|front_desk')
                 <li class="nav-item {{ $isHiring ? 'section-active' : '' }}">
                     <a class="nav-link menu-arrow" href="#sidebarHiring" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ $expandHiring }}"
-                        aria-controls="sidebarHiring">
+                        aria-expanded="{{ $expandHiring }}" aria-controls="sidebarHiring">
                         <span class="nav-icon">
                             <iconify-icon icon="solar:bag-3-outline"></iconify-icon>
                         </span>
@@ -401,9 +471,9 @@
                 </li>
             @endrole
 
- 
 
-       
+
+
             {{-- @role('super_admin|admin|front_desk|cutter|sewing|button|ironing|packaging')
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('tailoring.handover.index') }}">

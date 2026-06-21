@@ -22,6 +22,9 @@ class JobBatchItemController extends Controller
             'qty' => ['required', 'integer', 'min:1'],
             'per_piece_measurement' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
+
+            // NEW: mandatory cutter assignment
+            'assigned_cutter_id' => ['required', 'exists:users,id'],
         ]);
 
         $item = JobBatchItem::create([
@@ -31,8 +34,10 @@ class JobBatchItemController extends Controller
             'qty' => (int)$data['qty'],
             'per_piece_measurement' => (bool)($data['per_piece_measurement'] ?? false),
             'notes' => $data['notes'] ?? null,
-                'current_stage_id' => 1,
+            'current_stage_id' => 1,
 
+            // NEW
+            'assigned_cutter_id' => $data['assigned_cutter_id'],
         ]);
 
         $item->load(['dressType', 'measurementTemplate']);
