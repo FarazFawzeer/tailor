@@ -72,6 +72,8 @@ Route::middleware(['auth'])->prefix('tailoring')->name('tailoring.')->group(func
     Route::get('jobs/create-wizard', [JobController::class, 'createWizard'])->name('jobs.createWizard');
     Route::post('jobs/store-wizard', [JobController::class, 'storeWizard'])->name('jobs.storeWizard');
 
+    Route::get('jobs/{job}/bill-data', [JobController::class, 'billData'])
+        ->name('jobs.billData');
     // ✅ Wizard edit/update (NEW)
     Route::get('jobs/{job}/edit-wizard', [JobController::class, 'editWizard'])->name('jobs.editWizard');
     Route::put('jobs/{job}/update-wizard', [JobController::class, 'updateWizard'])->name('jobs.updateWizard');
@@ -187,8 +189,8 @@ Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring
     Route::delete('/agreements/delete/{hire_agreement}', [HireAgreementController::class, 'destroy'])
         ->name('hiring.agreements.destroy');
 
-        Route::get('hiring/agreements/{hire_agreement}/invoice', [\App\Http\Controllers\Hiring\HireAgreementController::class, 'invoice'])
-    ->name('hiring.agreements.invoice');
+    Route::get('hiring/agreements/{hire_agreement}/invoice', [\App\Http\Controllers\Hiring\HireAgreementController::class, 'invoice'])
+        ->name('hiring.agreements.invoice');
 
     // Availability Dashboard + Reports
     Route::get('/availability', [AvailabilityReportController::class, 'index'])->name('hiring.availability.index');
@@ -199,7 +201,7 @@ Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring
     Route::get('/availability/upcoming', [AvailabilityReportController::class, 'upcomingReturns'])->name('hiring.availability.upcoming');
 
     Route::get('/reports/sales', [\App\Http\Controllers\Hiring\HiringSalesReportController::class, 'index'])
-    ->name('hiring.reports.sales');
+        ->name('hiring.reports.sales');
 });
 
 Route::group(['prefix' => '/', 'middleware' => 'auth'], function () {

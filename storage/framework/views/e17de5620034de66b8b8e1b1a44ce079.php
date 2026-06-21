@@ -248,9 +248,17 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Notes</label>
-                    <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes for this job"></textarea>
+                <div class="row">
+                    <div class="col-md-9 mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes for this job"></textarea>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Discount</label>
+                        <input type="number" step="0.01" min="0" name="discount" class="form-control" value="0">
+                        <div class="muted-help">Applied to the final customer bill</div>
+                    </div>
                 </div>
 
                 
@@ -333,7 +341,6 @@
             ];
         }
 
-        // ✅ NEW: cutters list for assignment dropdowns
         $cuttersJs = [];
         foreach ($cutters as $u) {
             $cuttersJs[] = [
@@ -394,7 +401,6 @@
             return html;
         }
 
-        // ✅ NEW: cutter dropdown options
         function optionCutters(selectedId) {
             let html = `<option value="">Select Cutter</option>`;
             CUTTERS.forEach(u => {
@@ -874,13 +880,13 @@
                 const json = await res.json().catch(() => ({}));
                 const fields = json?.data || [];
 
-                // ✅ cache field metadata (label/unit) for this template, used later
+                // cache field metadata (label/unit) for this template, used later
                 // when building "print all" receipts after the whole job is saved.
                 TEMPLATE_FIELDS_CACHE[templateId] = fields;
 
                 modalFormArea.innerHTML = buildMeasurementFormHtml(fields, currentPrefix, qty, perPiece);
 
-                // ✅ If already saved hidden inputs exist, re-fill inputs in modal
+                // If already saved hidden inputs exist, re-fill inputs in modal
                 const hiddenInputs = row.querySelectorAll('input.hidden-meas');
                 hiddenInputs.forEach(h => {
                     const target = modalFormArea.querySelector(`[name="${CSS.escape(h.name)}"]`);
@@ -896,7 +902,7 @@
         }
 
         // =====================================================================
-        // RECEIPT PRINTING (80mm thermal printer friendly)
+        // SHARED HELPERS
         // =====================================================================
 
         function escapeHtml(str) {
@@ -907,6 +913,16 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#039;');
         }
+
+        function formatMoney(n) {
+            const x = Number(n || 0);
+            return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // =====================================================================
+        // MEASUREMENT RECEIPT PRINTING (80mm thermal printer friendly)
+        // One slip per item, showing measurement values.
+        // =====================================================================
 
         function printMeasurementReceipt(payload) {
             const piecesHtml = (payload.pieces || []).map(piece => {
@@ -1206,6 +1222,174 @@
             return results;
         }
 
+        // =====================================================================
+        // CUSTOMER BILL / RECEIPT PRINTING (80mm thermal printer friendly)
+        // ONE bill per job: job no, batch no, customer name/phone, dress type,
+        // qty, unit price, total price, discount, invoice no, date.
+        // =====================================================================
+
+        function printJobBill(bill) {
+            // bill shape (matches JobController::buildBillPayload()):
+            // {
+            //   invoice_no, invoice_date, job_no,
+            //   customer_name, customer_phone,
+            //   lines: [{ batch_no, dress, qty, unit_price, line_total }, ...],
+            //   sub_total, discount, grand_total
+            // }
+
+            const rowsHtml = (bill.lines || []).map(ln => `
+                <tr>
+                    <td class="b-batch">${escapeHtml(ln.batch_no || '-')}</td>
+                    <td class="b-dress">${escapeHtml(ln.dress || '-')}</td>
+                    <td class="b-qty">${escapeHtml(String(ln.qty ?? 0))}</td>
+                    <td class="b-price">${formatMoney(ln.unit_price)}</td>
+                    <td class="b-total">${formatMoney(ln.line_total)}</td>
+                </tr>
+            `).join('');
+
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Bill ${escapeHtml(bill.invoice_no || '')}</title>
+<style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+        width: 80mm;
+        margin: 0 auto;
+        padding: 4mm 4mm 8mm 4mm;
+        font-family: 'Courier New', Consolas, monospace;
+        font-size: 12px;
+        color: #000;
+        background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .shop-name { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .shop-sub { font-size: 10px; color: #333; margin-bottom: 6px; }
+    .divider-solid { border-top: 1px solid #000; margin: 6px 0; }
+    .divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
+    .meta-table { width: 100%; font-size: 11.5px; margin-bottom: 4px; }
+    .meta-table td { padding: 1px 0; vertical-align: top; }
+    .meta-label { width: 40%; font-weight: 700; white-space: nowrap; }
+    .meta-value { width: 60%; }
+    .items-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+    .items-table th {
+        border-bottom: 1px solid #000;
+        text-align: left;
+        padding: 3px 2px;
+        font-size: 10.5px;
+    }
+    .items-table td {
+        border-bottom: 1px dotted #999;
+        padding: 4px 2px;
+        vertical-align: top;
+    }
+    .b-qty { text-align: center; width: 10%; }
+    .b-price, .b-total { text-align: right; width: 22%; }
+    .b-dress { width: 36%; }
+    .b-batch { width: 20%; font-size: 10px; color: #444; }
+    .totals-table { width: 100%; margin-top: 6px; font-size: 12px; }
+    .totals-table td { padding: 2px 0; }
+    .totals-table .t-label { text-align: right; color: #333; width: 60%; }
+    .totals-table .t-value { text-align: right; font-weight: 700; width: 40%; }
+    .grand-row .t-label, .grand-row .t-value { font-size: 14px; font-weight: 800; }
+    .footer { margin-top: 12px; font-size: 9.5px; color: #333; text-align: center; }
+    .thanks { margin-top: 8px; text-align: center; font-size: 12px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+    <div class="center shop-name">${escapeHtml(COMPANY_NAME)}</div>
+    <div class="center shop-sub">Customer Bill / Receipt</div>
+
+    <div class="divider-solid"></div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="meta-label">Invoice No</td>
+            <td class="meta-value bold">${escapeHtml(bill.invoice_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Date</td>
+            <td class="meta-value">${escapeHtml(bill.invoice_date || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Job No</td>
+            <td class="meta-value bold">${escapeHtml(bill.job_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Customer</td>
+            <td class="meta-value">${escapeHtml(bill.customer_name || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Phone</td>
+            <td class="meta-value">${escapeHtml(bill.customer_phone || '-')}</td>
+        </tr>
+    </table>
+
+    <div class="divider-dashed"></div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="b-batch">Batch</th>
+                <th class="b-dress">Dress</th>
+                <th class="b-qty">Qty</th>
+                <th class="b-price">Price</th>
+                <th class="b-total">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml || '<tr><td colspan="5" class="center" style="padding:8px 0;">No items</td></tr>'}
+        </tbody>
+    </table>
+
+    <table class="totals-table">
+        <tr>
+            <td class="t-label">Sub Total</td>
+            <td class="t-value">${formatMoney(bill.sub_total)}</td>
+        </tr>
+        <tr>
+            <td class="t-label">Discount</td>
+            <td class="t-value">${formatMoney(bill.discount)}</td>
+        </tr>
+        <tr class="grand-row">
+            <td class="t-label">Grand Total</td>
+            <td class="t-value">${formatMoney(bill.grand_total)}</td>
+        </tr>
+    </table>
+
+    <div class="divider-dashed"></div>
+
+    <div class="thanks">Thank You!</div>
+
+    <div class="footer">
+        Printed: ${escapeHtml(new Date().toLocaleString())}
+    </div>
+
+</body>
+</html>
+            `;
+
+            const printWin = window.open('', '_blank', 'width=400,height=600');
+            if (!printWin) {
+                alert('Please allow popups to print the bill.');
+                return;
+            }
+
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
+
+            printWin.onload = function () {
+                printWin.focus();
+                printWin.print();
+            };
+        }
+
         // ✅ save measurements into hidden inputs (REAL submit values) + offer to print
         btnSaveMeasurements.addEventListener('click', function() {
             if (!currentRow) return;
@@ -1319,7 +1503,7 @@
             }
         });
 
-        // ✅ batch default cutter changed -> apply to item rows that don't already have a cutter chosen
+        // batch default cutter changed -> apply to item rows that don't already have a cutter chosen
         batchesArea.addEventListener('change', function(e) {
             if (!e.target.classList.contains('batchDefaultCutter')) return;
             const batchCard = e.target.closest('.batch-card');
@@ -1330,7 +1514,7 @@
             });
         });
 
-        // ✅ price + qty live totals
+        // price + qty live totals
         batchesArea.addEventListener('input', function(e) {
             if (e.target.classList.contains('qtyInput') || e.target.classList.contains('unitPriceInput')) {
                 const row = e.target.closest('tr');
@@ -1341,7 +1525,7 @@
             }
         });
 
-        // ✅ default first batch
+        // default first batch
         addBatchCard();
 
         // ===== Submit wizard =====
@@ -1351,7 +1535,7 @@
             const box = document.getElementById('message');
             box.innerHTML = '';
 
-            // ✅ validate: cutter must be assigned for every item
+            // validate: cutter must be assigned for every item
             const allRows = batchesArea.querySelectorAll('tr');
             for (const r of allRows) {
                 const cutterSelect = r.querySelector('.assignedCutterSelect');
@@ -1363,7 +1547,7 @@
                 }
             }
 
-            // ✅ validate: template selected => must have hidden measurement inputs
+            // validate: template selected => must have hidden measurement inputs
             for (const r of allRows) {
                 const templateId = r.querySelector('.templateSelect')?.value;
                 if (templateId) {
@@ -1397,8 +1581,31 @@
 
                 box.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
 
-                const realJobNo = data.message?.match(/\(([^)]+)\)/)?.[1] || data.data?.id;
+                const realJobNo = data.data.job_no;
+                const billPayload = data.data.bill; // comes straight from storeWizard's JSON response
                 const itemsWithMeasurements = collectAllSavedItemsForPrint(realJobNo);
+
+                function goToJobPage() {
+                    window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data.data.id;
+                }
+
+                function offerBillPrint() {
+                    if (!billPayload) { goToJobPage(); return; }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Print Customer Bill?',
+                        text: 'Print the final bill/receipt for the customer now?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Print Bill',
+                        cancelButtonText: 'Skip'
+                    }).then(billResult => {
+                        if (billResult.isConfirmed) {
+                            printJobBill(billPayload);
+                        }
+                        setTimeout(goToJobPage, 700);
+                    });
+                }
 
                 if (itemsWithMeasurements.length > 0) {
                     Swal.fire({
@@ -1411,19 +1618,13 @@
                     }).then(result => {
                         if (result.isConfirmed) {
                             itemsWithMeasurements.forEach((payload, idx) => {
-                                setTimeout(() => printMeasurementReceipt(payload), idx *
-                                    600);
+                                setTimeout(() => printMeasurementReceipt(payload), idx * 600);
                             });
                         }
-                        setTimeout(() => {
-                            window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data
-                                .data.id;
-                        }, 800 + itemsWithMeasurements.length * 600);
+                        setTimeout(offerBillPrint, 800 + itemsWithMeasurements.length * 600);
                     });
                 } else {
-                    setTimeout(() => {
-                        window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data.data.id;
-                    }, 700);
+                    offerBillPrint();
                 }
 
             }).catch(err => {
@@ -1432,5 +1633,4 @@
         });
     </script>
 <?php $__env->stopSection(); ?>
-
 <?php echo $__env->make('layouts.vertical', ['subtitle' => 'Create Job (Easy)'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH F:\Personal Projects\Infotech\tailor\resources\views/tailoring/jobs/create_wizard.blade.php ENDPATH**/ ?>

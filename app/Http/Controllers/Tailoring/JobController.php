@@ -207,7 +207,7 @@ class JobController extends Controller
             'job_date'    => ['required', 'date'],
             'due_date'    => ['required', 'date'],
             'notes'       => ['nullable', 'string'],
-
+            'discount'    => ['nullable', 'numeric', 'min:0'],
             // batches
             'batches'              => ['required', 'array', 'min:1'],
             'batches.*.batch_date' => ['required', 'date'],
@@ -242,6 +242,7 @@ class JobController extends Controller
                 'job_date'         => $data['job_date'] ?? now()->toDateString(),
                 'due_date'         => $data['due_date'] ?? null,
                 'notes'            => $data['notes'] ?? null,
+                'discount'         => (float)($data['discount'] ?? 0), // NEW
                 'current_stage_id' => $firstStage?->id,
                 'created_by'       => auth()->id(),
             ]);
@@ -303,7 +304,11 @@ class JobController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Job created ({$job->job_no})",
-            'data'    => ['id' => $job->id, 'job_no' => $job->job_no], // add job_no
+            'data'    => [
+                'id'       => $job->id,
+                'job_no'   => $job->job_no,
+                'bill'     => $this->buildBillPayload($job->fresh(['customer', 'batches.items.dressType'])),
+            ],
         ]);
     }
 
@@ -325,7 +330,7 @@ class JobController extends Controller
 
         // ...unchanged existing measurement-loading code...
 
-         // ✅ Load existing measurements WITHOUT item->measurementSets relationship
+        // ✅ Load existing measurements WITHOUT item->measurementSets relationship
         $itemIds = $job->batches->flatMap(fn($b) => $b->items)->pluck('id')->all();
 
         $sets = ItemMeasurementSet::query()
@@ -364,6 +369,7 @@ class JobController extends Controller
             'job_date'    => ['required', 'date'],
             'due_date'    => ['required', 'date'],
             'notes'       => ['nullable', 'string'],
+            'discount'    => ['nullable', 'numeric', 'min:0'],
 
             // batches
             'batches'              => ['nullable', 'array'],
@@ -397,6 +403,7 @@ class JobController extends Controller
                 'job_date'    => $data['job_date'] ?? $job->job_date,
                 'due_date'    => $data['due_date'] ?? $job->due_date,
                 'notes'       => $data['notes'] ?? null,
+                'discount'    => (float)($data['discount'] ?? 0), // NEW
             ]);
 
             $incomingBatches = $data['batches'] ?? [];
@@ -735,5 +742,61 @@ class JobController extends Controller
 
         return redirect()->route('tailoring.jobs.index')
             ->with('success', 'Job deleted successfully.');
+    }
+
+
+    /**
+     * Builds the structured payload needed to render the 80mm customer bill/receipt.
+     * Shared by storeWizard() (returned inline after create) and billData() (fetched from show page).
+     */
+    private function buildBillPayload(Job $job): array
+    {
+        $lines = [];
+
+        foreach ($job->batches as $batch) {
+            foreach ($batch->items as $it) {
+                $qty = (int)($it->qty ?? 0);
+                $unit = (float)($it->unit_price ?? 0);
+                $lineTotal = (float)($it->line_total ?? ($qty * $unit));
+
+                $lines[] = [
+                    'batch_no'   => $batch->batch_no,
+                    'dress'      => $it->dressType?->name ?? 'N/A',
+                    'qty'        => $qty,
+                    'unit_price' => $unit,
+                    'line_total' => $lineTotal,
+                ];
+            }
+        }
+
+        $subTotal = collect($lines)->sum('line_total');
+        $discount = (float)($job->discount ?? 0);
+        $grandTotal = max(0, $subTotal - $discount);
+
+        return [
+            'invoice_no'   => 'INV-' . $job->job_no,
+            'invoice_date' => now()->toDateString(),
+            'job_no'       => $job->job_no,
+            'customer_name' => $job->customer?->full_name ?? '-',
+            'customer_phone' => $job->customer?->phone ?? '-',
+            'lines'        => $lines,
+            'sub_total'    => $subTotal,
+            'discount'     => $discount,
+            'grand_total'  => $grandTotal,
+        ];
+    }
+
+    /**
+     * JSON endpoint used by show.blade.php's "Print Bill" button to fetch
+     * fresh bill data without doing a full PDF round-trip.
+     */
+    public function billData(Job $job)
+    {
+        $job->load(['customer', 'batches.items.dressType']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->buildBillPayload($job),
+        ]);
     }
 }

@@ -1,51 +1,151 @@
 @extends('layouts.vertical', ['subtitle' => 'Edit Job (Easy)'])
 
 @section('content')
-    @include('layouts.partials.page-title', ['title' => 'Tailoring Jobs', 'subtitle' => 'Edit (Easy Screen)'])
+    @include('layouts.partials.page-title', [
+        'title' => 'Tailoring Jobs',
+        'subtitle' => 'Edit (Easy Screen)',
+    ])
 
     <style>
-        .required-star { color:red; font-weight:bold; margin-left:3px; }
-        .batch-card { border:1px solid rgba(0,0,0,.08); border-radius:12px; }
-        .batch-header { background: rgba(0,0,0,.03); border-radius:12px 12px 0 0; }
-        .item-row-actions { min-width: 160px; }
-        .muted-help { font-size: 12px; color: #6c757d; }
-        .pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; background: rgba(13,110,253,.08); }
+        .required-star {
+            color: red;
+            font-weight: bold;
+            margin-left: 3px;
+        }
 
-        .diagram-wrap { position: relative; width: 100%; }
-        .diagram-wrap img { width: 100%; height: auto; display: block; }
+        .batch-card {
+            border: 1px solid rgba(0, 0, 0, .08);
+            border-radius: 12px;
+        }
+
+        .batch-header {
+            background: rgba(0, 0, 0, .03);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .item-row-actions {
+            min-width: 160px;
+        }
+
+        .muted-help {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .pill {
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: rgba(13, 110, 253, .08);
+        }
+
+        .diagram-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        .diagram-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
 
         .zone {
             position: absolute;
             border-radius: 10px;
             opacity: 0;
             transition: opacity .15s ease-in-out;
-            outline: 2px dashed rgba(0,0,0,.35);
+            outline: 2px dashed rgba(0, 0, 0, .35);
             background: rgba(255, 193, 7, 0.25);
             pointer-events: none;
         }
-        .zone.active { opacity: 1; }
 
-        .zone-neck { top: 6%; left: 38%; width: 24%; height: 10%; }
-        .zone-shoulder { top: 12%; left: 20%; width: 60%; height: 12%; }
-        .zone-chest { top: 25%; left: 25%; width: 50%; height: 16%; }
-        .zone-sleeve { top: 20%; left: 5%; width: 20%; height: 22%; }
-        .zone-waist { top: 42%; left: 28%; width: 44%; height: 14%; }
-        .zone-hip { top: 55%; left: 28%; width: 44%; height: 14%; }
-        .zone-length { top: 68%; left: 32%; width: 36%; height: 24%; }
-        .zone-bottom { top: 86%; left: 32%; width: 36%; height: 10%; }
+        .zone.active {
+            opacity: 1;
+        }
 
-        .modal-diagram-card { position: sticky; top: 10px; }
+        .zone-neck {
+            top: 6%;
+            left: 38%;
+            width: 24%;
+            height: 10%;
+        }
 
-        .money { text-align:right; }
+        .zone-shoulder {
+            top: 12%;
+            left: 20%;
+            width: 60%;
+            height: 12%;
+        }
+
+        .zone-chest {
+            top: 25%;
+            left: 25%;
+            width: 50%;
+            height: 16%;
+        }
+
+        .zone-sleeve {
+            top: 20%;
+            left: 5%;
+            width: 20%;
+            height: 22%;
+        }
+
+        .zone-waist {
+            top: 42%;
+            left: 28%;
+            width: 44%;
+            height: 14%;
+        }
+
+        .zone-hip {
+            top: 55%;
+            left: 28%;
+            width: 44%;
+            height: 14%;
+        }
+
+        .zone-length {
+            top: 68%;
+            left: 32%;
+            width: 36%;
+            height: 24%;
+        }
+
+        .zone-bottom {
+            top: 86%;
+            left: 32%;
+            width: 36%;
+            height: 10%;
+        }
+
+        .modal-diagram-card {
+            position: sticky;
+            top: 10px;
+        }
+
+        .money {
+            text-align: right;
+        }
+
         .total-box {
-            border:1px dashed rgba(0,0,0,.15);
-            border-radius:12px;
-            padding:10px 12px;
-            background:#fff;
+            border: 1px dashed rgba(0, 0, 0, .15);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: #fff;
             min-width: 220px;
         }
-        .total-box .lbl { font-size:12px; color:#6c757d; }
-        .total-box .val { font-size:18px; font-weight:800; }
+
+        .total-box .lbl {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .total-box .val {
+            font-size: 18px;
+            font-weight: 800;
+        }
 
         /* ===== Items table responsive fix ===== */
         .items-table {
@@ -129,7 +229,7 @@
                         <label class="form-label">Customer <span class="required-star">*</span></label>
                         <select name="customer_id" class="form-select" required>
                             <option value="">Select Customer</option>
-                            @foreach($customers as $c)
+                            @foreach ($customers as $c)
                                 <option value="{{ $c->id }}" {{ $job->customer_id == $c->id ? 'selected' : '' }}>
                                     {{ $c->full_name }} ({{ $c->phone ?? '-' }})
                                 </option>
@@ -140,20 +240,25 @@
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Job Date</label>
                         <input type="date" name="job_date" class="form-control"
-                               value="{{ optional($job->job_date)->toDateString() }}">
+                            value="{{ optional($job->job_date)->toDateString() }}">
                     </div>
 
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Job Due Date <span class="required-star">*</span></label>
                         <input type="date" name="due_date" class="form-control" required
-                               value="{{ optional($job->due_date)->toDateString() }}">
+                            value="{{ optional($job->due_date)->toDateString() }}">
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Notes</label>
-                    <textarea name="notes" class="form-control" rows="2"
-                        placeholder="Optional notes for this job">{{ $job->notes }}</textarea>
+                    <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes for this job">{{ $job->notes }}</textarea>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Discount</label>
+                    <input type="number" step="0.01" min="0" name="discount" class="form-control"
+                        value="{{ $job->discount ?? 0 }}">
                 </div>
 
                 {{-- GRAND TOTAL --}}
@@ -180,7 +285,8 @@
                 <div id="batchesArea"></div>
 
                 <div class="d-flex justify-content-end gap-2 mt-3">
-                    <a href="{{ route('tailoring.jobs.show', $job) }}" class="btn btn-secondary" style="width: 150px;">Back</a>
+                    <a href="{{ route('tailoring.jobs.show', $job) }}" class="btn btn-secondary"
+                        style="width: 150px;">Back</a>
                     <button class="btn btn-primary" type="submit" style="width: 150px;">Update Job</button>
                 </div>
             </form>
@@ -219,8 +325,10 @@
                 'id' => $d->id,
                 'name' => $d->name,
                 'code' => $d->code,
-                'front_img' => $d->diagram_front ? asset($d->diagram_front) : asset('/images/diagrams/default-front.png'),
-                'back_img'  => $d->diagram_back  ? asset($d->diagram_back)  : asset('/images/diagrams/default-back.png'),
+                'front_img' => $d->diagram_front
+                    ? asset($d->diagram_front)
+                    : asset('/images/diagrams/default-front.png'),
+                'back_img' => $d->diagram_back ? asset($d->diagram_back) : asset('/images/diagrams/default-back.png'),
             ];
         }
 
@@ -235,18 +343,18 @@
         }
 
         $cuttersJs = [];
-foreach ($cutters as $u) {
-    $cuttersJs[] = [
-        'id' => $u->id,
-        'name' => $u->name,
-    ];
-}
+        foreach ($cutters as $u) {
+            $cuttersJs[] = [
+                'id' => $u->id,
+                'name' => $u->name,
+            ];
+        }
 
         $jobJs = ['batches' => []];
         foreach ($job->batches as $b) {
             $batchArr = [
                 'id' => $b->id,
-                 'batch_no' => $b->batch_no,
+                'batch_no' => $b->batch_no,
                 'batch_date' => optional($b->batch_date)->toDateString(),
                 'due_date' => optional($b->due_date)->toDateString(),
                 'notes' => $b->notes,
@@ -259,10 +367,10 @@ foreach ($cutters as $u) {
                     'dress_type_id' => $it->dress_type_id,
                     'measurement_template_id' => $it->measurement_template_id,
                     'qty' => $it->qty,
-                    'unit_price' => (float)($it->unit_price ?? 0),
-                    'per_piece_measurement' => (bool)$it->per_piece_measurement,
+                    'unit_price' => (float) ($it->unit_price ?? 0),
+                    'per_piece_measurement' => (bool) $it->per_piece_measurement,
                     'notes' => $it->notes,
-                       'assigned_cutter_id' => $it->assigned_cutter_id, // NEW
+                    'assigned_cutter_id' => $it->assigned_cutter_id, // NEW
                 ];
             }
 
@@ -270,18 +378,18 @@ foreach ($cutters as $u) {
         }
 
         $defaultFront = asset('/images/diagrams/default-front.png');
-        $defaultBack  = asset('/images/diagrams/default-back.png');
+        $defaultBack = asset('/images/diagrams/default-back.png');
     @endphp
 
     <script>
         const DRESS_TYPES = @json($dressTypesJs);
-        const TEMPLATES   = @json($templatesJs);
-        const JOB_DATA    = @json($jobJs);
+        const TEMPLATES = @json($templatesJs);
+        const JOB_DATA = @json($jobJs);
         const EXISTING_MEASUREMENTS = @json($existingMeasurements ?? []);
-const CUTTERS = @json($cuttersJs);
+        const CUTTERS = @json($cuttersJs);
 
         const DEFAULT_FRONT = @json($defaultFront);
-        const DEFAULT_BACK  = @json($defaultBack);
+        const DEFAULT_BACK = @json($defaultBack);
 
         const HIGHLIGHT_MAP = {
             chest: 'zone-chest',
@@ -321,7 +429,10 @@ const CUTTERS = @json($cuttersJs);
 
         function money(n) {
             const x = Number(n || 0);
-            return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return x.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
         }
 
         function recalcRowTotals(row) {
@@ -504,12 +615,12 @@ const CUTTERS = @json($cuttersJs);
 
             const itemId = prefillItem?.id || '';
             const dressTypeId = prefillItem?.dress_type_id || '';
-            const templateId  = prefillItem?.measurement_template_id || '';
+            const templateId = prefillItem?.measurement_template_id || '';
             const qty = prefillItem?.qty || 1;
             const unitPrice = Number(prefillItem?.unit_price || 0);
             const perPiece = prefillItem?.per_piece_measurement ? true : false;
             const notes = prefillItem?.notes || '';
-const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
+            const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
 
             const tr = document.createElement('tr');
             tr.dataset.itemIndex = itemIndex;
@@ -644,7 +755,7 @@ const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
         function enableDiagramSwitching(frontImg, backImg) {
             const diagramImage = modalBodyContent.querySelector('#diagramImage');
             const btnFront = modalBodyContent.querySelector('#btnFront');
-            const btnBack  = modalBodyContent.querySelector('#btnBack');
+            const btnBack = modalBodyContent.querySelector('#btnBack');
 
             btnFront?.addEventListener('click', () => {
                 diagramImage.src = frontImg;
@@ -703,19 +814,19 @@ const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
                         <div class="card-body">
                             <div class="row">
                                 ${fields.map(f => `
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">
-                                            ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
-                                        </label>
-                                        <input
-                                            type="${inputType(f)}"
-                                            step="0.01"
-                                            class="form-control measure-field"
-                                            data-zone="${zoneFor(f)}"
-                                            name="${prefix}[measurements][same][${f.id}]"
-                                            placeholder="Enter ${f.label}">
-                                    </div>
-                                `).join('')}
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">
+                                                ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
+                                            </label>
+                                            <input
+                                                type="${inputType(f)}"
+                                                step="0.01"
+                                                class="form-control measure-field"
+                                                data-zone="${zoneFor(f)}"
+                                                name="${prefix}[measurements][same][${f.id}]"
+                                                placeholder="Enter ${f.label}">
+                                        </div>
+                                    `).join('')}
                             </div>
 
                             <div class="mb-0">
@@ -752,19 +863,19 @@ const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
                             <div class="card-body">
                                 <div class="row">
                                     ${fields.map(f => `
-                                        <div class="col-md-4 mb-3">
-                                            <label class="form-label">
-                                                ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
-                                            </label>
-                                            <input
-                                                type="${inputType(f)}"
-                                                step="0.01"
-                                                class="form-control measure-field"
-                                                data-zone="${zoneFor(f)}"
-                                                name="${prefix}[measurements][${p}][${f.id}]"
-                                                placeholder="Enter ${f.label}">
-                                        </div>
-                                    `).join('')}
+                                            <div class="col-md-4 mb-3">
+                                                <label class="form-label">
+                                                    ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
+                                                </label>
+                                                <input
+                                                    type="${inputType(f)}"
+                                                    step="0.01"
+                                                    class="form-control measure-field"
+                                                    data-zone="${zoneFor(f)}"
+                                                    name="${prefix}[measurements][${p}][${f.id}]"
+                                                    placeholder="Enter ${f.label}">
+                                            </div>
+                                        `).join('')}
                                 </div>
 
                                 <div class="mb-0">
@@ -795,13 +906,13 @@ const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
             currentPrefix = `batches[${batchIndex}][items][${itemIndex}]`;
 
             const dressTypeId = row.querySelector('.dressTypeSelect').value;
-            const templateId  = row.querySelector('.templateSelect').value;
-            const qty         = parseInt(row.querySelector('.qtyInput').value || '1', 10);
-            const perPiece    = row.querySelector('.perPieceCheck').checked;
+            const templateId = row.querySelector('.templateSelect').value;
+            const qty = parseInt(row.querySelector('.qtyInput').value || '1', 10);
+            const perPiece = row.querySelector('.perPieceCheck').checked;
 
             const dressObj = DRESS_TYPES.find(d => String(d.id) === String(dressTypeId));
             const frontImg = dressObj?.front_img || DEFAULT_FRONT;
-            const backImg  = dressObj?.back_img  || DEFAULT_BACK;
+            const backImg = dressObj?.back_img || DEFAULT_BACK;
 
             const dressName = row.querySelector('.dressTypeSelect')?.selectedOptions?.[0]?.textContent ?? '';
             modalSubtitle.textContent = `${dressName} | Qty ${qty} | ${perPiece ? 'Per Piece' : 'Same for All'}`;
@@ -813,16 +924,19 @@ const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
             const modalFormArea = modalBodyContent.querySelector('#modalFormArea');
 
             if (!templateId) {
-                modalFormArea.innerHTML = `<div class="alert alert-warning">Please select a Measurement Template first.</div>`;
+                modalFormArea.innerHTML =
+                    `<div class="alert alert-warning">Please select a Measurement Template first.</div>`;
                 btnSaveMeasurements.disabled = true;
             } else {
                 btnSaveMeasurements.disabled = false;
 
                 const res = await fetch(`{{ url('measurement-templates') }}/${templateId}/fields`, {
-                    headers: { "Accept":"application/json" }
+                    headers: {
+                        "Accept": "application/json"
+                    }
                 });
 
-                const json = await res.json().catch(()=>({}));
+                const json = await res.json().catch(() => ({}));
                 const fields = json?.data || [];
 
                 modalFormArea.innerHTML = buildMeasurementFormHtml(fields, currentPrefix, qty, perPiece);
@@ -841,96 +955,114 @@ const assignedCutterId = prefillItem?.assigned_cutter_id || ''; // NEW
             modal.show();
         }
 
-       btnSaveMeasurements.addEventListener('click', function () {
-    if (!currentRow) return;
+        btnSaveMeasurements.addEventListener('click', function() {
+            if (!currentRow) return;
 
-    const templateId = currentRow.querySelector('.templateSelect').value;
-    if (templateId) {
-        const anyInput = modalBodyContent.querySelector('input[name*="[measurements]"]');
-        if (!anyInput) {
-            modalWarn.textContent = "This template has no measurement fields.";
-            modalWarn.classList.remove('d-none');
-            return;
-        }
-    }
+            const templateId = currentRow.querySelector('.templateSelect').value;
+            if (templateId) {
+                const anyInput = modalBodyContent.querySelector('input[name*="[measurements]"]');
+                if (!anyInput) {
+                    modalWarn.textContent = "This template has no measurement fields.";
+                    modalWarn.classList.remove('d-none');
+                    return;
+                }
+            }
 
-    clearHiddenMeasurements(currentRow);
+            clearHiddenMeasurements(currentRow);
 
-    const modalFormArea = modalBodyContent.querySelector('#modalFormArea');
+            const modalFormArea = modalBodyContent.querySelector('#modalFormArea');
 
-    modalFormArea.querySelectorAll('input[name*="[measurements]"]').forEach(inp => {
-        addHidden(currentRow, inp.name, inp.value);
-    });
-
-    modalFormArea.querySelectorAll('input[name*="[notes_map]"]').forEach(inp => {
-        addHidden(currentRow, inp.name, inp.value);
-    });
-
-    markSaved(currentRow);
-
-    // ✅ Build print payload using real job_no (already known in edit mode)
-    const printPayload = buildPrintPayloadFromRow(currentRow, modalFormArea, templateId);
-
-    bootstrap.Modal.getInstance(measurementModalEl).hide();
-
-    Swal.fire({
-        icon: 'success',
-        title: 'Measurements Saved',
-        text: 'Do you want to print the measurement receipt?',
-        showCancelButton: true,
-        confirmButtonText: 'Print',
-        cancelButtonText: 'Not now'
-    }).then(result => {
-        if (result.isConfirmed) {
-            printMeasurementReceipt(printPayload);
-        }
-    });
-});
-
-function buildPrintPayloadFromRow(row, modalFormArea, templateId) {
-    const dressName = row.querySelector('.dressTypeSelect')?.selectedOptions?.[0]?.textContent ?? '';
-    const templateName = row.querySelector('.templateSelect')?.selectedOptions?.[0]?.textContent ?? '';
-    const qty = row.querySelector('.qtyInput')?.value || '';
-    const itemNotes = row.querySelector('input[name*="[notes]"]:not([name*="notes_map"])')?.value || '';
-    const perPiece = row.querySelector('.perPieceCheck')?.checked;
-
-    const pieces = [];
-
-    if (templateId) {
-        if (!perPiece) {
-            const fields = [];
-            modalFormArea.querySelectorAll('input[name*="[measurements][same]"]').forEach(inp => {
-                const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent?.trim() || inp.name;
-                fields.push({ label: label.replace(/\*$/, '').trim(), unit: '', value: inp.value });
+            modalFormArea.querySelectorAll('input[name*="[measurements]"]').forEach(inp => {
+                addHidden(currentRow, inp.name, inp.value);
             });
-            const notesInput = modalFormArea.querySelector('input[name*="[notes_map][same]"]');
-            pieces.push({ title: 'All Pieces (Same)', fields, notes: notesInput?.value || '' });
-        } else {
-            const tabPanes = modalFormArea.querySelectorAll('.tab-pane');
-            tabPanes.forEach((pane, idx) => {
-                const pieceNo = idx + 1;
-                const fields = [];
-                pane.querySelectorAll(`input[name*="[measurements][${pieceNo}]"]`).forEach(inp => {
-                    const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent?.trim() || inp.name;
-                    fields.push({ label: label.replace(/\*$/, '').trim(), unit: '', value: inp.value });
-                });
-                const notesInput = pane.querySelector(`input[name*="[notes_map][${pieceNo}]"]`);
-                pieces.push({ title: `Piece ${pieceNo}`, fields, notes: notesInput?.value || '' });
-            });
-        }
-    }
 
-    return {
-        job_no: '{{ $job->job_no }}',
-        batch_no: 'See Batch', // overridden below per row
-        dress_name: dressName,
-        template_name: templateName,
-        qty,
-        per_piece: perPiece,
-        pieces,
-        item_notes: itemNotes
-    };
-}
+            modalFormArea.querySelectorAll('input[name*="[notes_map]"]').forEach(inp => {
+                addHidden(currentRow, inp.name, inp.value);
+            });
+
+            markSaved(currentRow);
+
+            // ✅ Build print payload using real job_no (already known in edit mode)
+            const printPayload = buildPrintPayloadFromRow(currentRow, modalFormArea, templateId);
+
+            bootstrap.Modal.getInstance(measurementModalEl).hide();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Measurements Saved',
+                text: 'Do you want to print the measurement receipt?',
+                showCancelButton: true,
+                confirmButtonText: 'Print',
+                cancelButtonText: 'Not now'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    printMeasurementReceipt(printPayload);
+                }
+            });
+        });
+
+        function buildPrintPayloadFromRow(row, modalFormArea, templateId) {
+            const dressName = row.querySelector('.dressTypeSelect')?.selectedOptions?.[0]?.textContent ?? '';
+            const templateName = row.querySelector('.templateSelect')?.selectedOptions?.[0]?.textContent ?? '';
+            const qty = row.querySelector('.qtyInput')?.value || '';
+            const itemNotes = row.querySelector('input[name*="[notes]"]:not([name*="notes_map"])')?.value || '';
+            const perPiece = row.querySelector('.perPieceCheck')?.checked;
+
+            const pieces = [];
+
+            if (templateId) {
+                if (!perPiece) {
+                    const fields = [];
+                    modalFormArea.querySelectorAll('input[name*="[measurements][same]"]').forEach(inp => {
+                        const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent?.trim() || inp
+                            .name;
+                        fields.push({
+                            label: label.replace(/\*$/, '').trim(),
+                            unit: '',
+                            value: inp.value
+                        });
+                    });
+                    const notesInput = modalFormArea.querySelector('input[name*="[notes_map][same]"]');
+                    pieces.push({
+                        title: 'All Pieces (Same)',
+                        fields,
+                        notes: notesInput?.value || ''
+                    });
+                } else {
+                    const tabPanes = modalFormArea.querySelectorAll('.tab-pane');
+                    tabPanes.forEach((pane, idx) => {
+                        const pieceNo = idx + 1;
+                        const fields = [];
+                        pane.querySelectorAll(`input[name*="[measurements][${pieceNo}]"]`).forEach(inp => {
+                            const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent
+                                ?.trim() || inp.name;
+                            fields.push({
+                                label: label.replace(/\*$/, '').trim(),
+                                unit: '',
+                                value: inp.value
+                            });
+                        });
+                        const notesInput = pane.querySelector(`input[name*="[notes_map][${pieceNo}]"]`);
+                        pieces.push({
+                            title: `Piece ${pieceNo}`,
+                            fields,
+                            notes: notesInput?.value || ''
+                        });
+                    });
+                }
+            }
+
+            return {
+                job_no: '{{ $job->job_no }}',
+                batch_no: 'See Batch', // overridden below per row
+                dress_name: dressName,
+                template_name: templateName,
+                qty,
+                per_piece: perPiece,
+                pieces,
+                item_notes: itemNotes
+            };
+        }
 
         btnAddBatch.addEventListener('click', function() {
             addBatchCard(null);
@@ -1044,7 +1176,8 @@ function buildPrintPayloadFromRow(row, modalFormArea, templateId) {
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok) {
-                    box.innerHTML = `<div class="alert alert-danger">${data.message || 'Validation error'}</div>`;
+                    box.innerHTML =
+                        `<div class="alert alert-danger">${data.message || 'Validation error'}</div>`;
                     return;
                 }
 

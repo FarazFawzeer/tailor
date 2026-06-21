@@ -35,10 +35,11 @@
             flex-wrap: wrap;
             gap: 15px;
         }
-.stage-card {
-    flex: 0 0 calc(33.333% - 12px);
-    max-width: calc(33.333% - 12px);
-}
+
+        .stage-card {
+            flex: 0 0 calc(33.333% - 12px);
+            max-width: calc(33.333% - 12px);
+        }
 
         @media (max-width:1200px) {
             .stage-card {

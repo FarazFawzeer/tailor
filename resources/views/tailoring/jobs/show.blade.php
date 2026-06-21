@@ -125,6 +125,9 @@
                     <div class="col-md-3">
                         <div class="kv"><b>Due Date:</b> <span>{{ $job->due_date?->format('d M Y') ?? '-' }}</span></div>
                     </div>
+                    <div class="col-md-3">
+                        <div class="kv"><b>Discount:</b> <span>{{ number_format((float)($job->discount ?? 0), 2) }}</span></div>
+                    </div>
                     <div class="col-md-">
                         <div class="kv"><b>Notes:</b> <span>{{ $job->notes ?? '-' }}</span></div>
                     </div>
@@ -138,12 +141,15 @@
                     <div class="muted-help">Based on Qty × Unit Price</div>
 
                     <div class="d-flex justify-content-end gap-2 mt-2">
-                        {{-- Later you can add invoice route --}}
-       <a class="btn btn-success btn-sm text-white" 
-   href="{{ route('tailoring.jobs.invoicePdf', $job) }}"
-   target="_blank">
-   Generate Invoice
-</a>
+                        <a class="btn btn-success btn-sm text-white"
+                           href="{{ route('tailoring.jobs.invoicePdf', $job) }}"
+                           target="_blank">
+                           Generate Invoice
+                        </a>
+
+                        <button type="button" class="btn btn-outline-success btn-sm" id="btnPrintBill">
+                            <iconify-icon icon="solar:printer-linear"></iconify-icon> Print Bill (80mm)
+                        </button>
                     </div>
                 </div>
             </div>
@@ -753,7 +759,7 @@
     });
 
     // =====================================================================
-    // RECEIPT PRINTING (80mm thermal printer friendly)
+    // SHARED HELPERS
     // =====================================================================
 
     function escapeHtml(str) {
@@ -764,6 +770,16 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
     }
+
+    function formatMoney(n) {
+        const x = Number(n || 0);
+        return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // =====================================================================
+    // MEASUREMENT RECEIPT PRINTING (80mm thermal printer friendly)
+    // One slip per item, showing measurement values.
+    // =====================================================================
 
     function printMeasurementReceipt(payload) {
         const piecesHtml = (payload.pieces || []).map(piece => {
@@ -948,6 +964,192 @@
             const rawPayload = JSON.parse(btn2.dataset.payload || '{}');
             printMeasurementReceipt(adaptViewPayloadToPrintPayload(rawPayload));
             return;
+        }
+    });
+
+    // =====================================================================
+    // CUSTOMER BILL / RECEIPT PRINTING (80mm thermal printer friendly)
+    // ONE bill per job: job no, batch no, customer name/phone, dress type,
+    // qty, unit price, total price, discount, invoice no, date.
+    // =====================================================================
+
+    function printJobBill(bill) {
+        // bill shape (matches JobController::buildBillPayload()):
+        // {
+        //   invoice_no, invoice_date, job_no,
+        //   customer_name, customer_phone,
+        //   lines: [{ batch_no, dress, qty, unit_price, line_total }, ...],
+        //   sub_total, discount, grand_total
+        // }
+
+        const rowsHtml = (bill.lines || []).map(ln => `
+            <tr>
+                <td class="b-batch">${escapeHtml(ln.batch_no || '-')}</td>
+                <td class="b-dress">${escapeHtml(ln.dress || '-')}</td>
+                <td class="b-qty">${escapeHtml(String(ln.qty ?? 0))}</td>
+                <td class="b-price">${formatMoney(ln.unit_price)}</td>
+                <td class="b-total">${formatMoney(ln.line_total)}</td>
+            </tr>
+        `).join('');
+
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Bill ${escapeHtml(bill.invoice_no || '')}</title>
+<style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+        width: 80mm;
+        margin: 0 auto;
+        padding: 4mm 4mm 8mm 4mm;
+        font-family: 'Courier New', Consolas, monospace;
+        font-size: 12px;
+        color: #000;
+        background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .shop-name { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .shop-sub { font-size: 10px; color: #333; margin-bottom: 6px; }
+    .divider-solid { border-top: 1px solid #000; margin: 6px 0; }
+    .divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
+    .meta-table { width: 100%; font-size: 11.5px; margin-bottom: 4px; }
+    .meta-table td { padding: 1px 0; vertical-align: top; }
+    .meta-label { width: 40%; font-weight: 700; white-space: nowrap; }
+    .meta-value { width: 60%; }
+    .items-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+    .items-table th {
+        border-bottom: 1px solid #000;
+        text-align: left;
+        padding: 3px 2px;
+        font-size: 10.5px;
+    }
+    .items-table td {
+        border-bottom: 1px dotted #999;
+        padding: 4px 2px;
+        vertical-align: top;
+    }
+    .b-qty { text-align: center; width: 10%; }
+    .b-price, .b-total { text-align: right; width: 22%; }
+    .b-dress { width: 36%; }
+    .b-batch { width: 20%; font-size: 10px; color: #444; }
+    .totals-table { width: 100%; margin-top: 6px; font-size: 12px; }
+    .totals-table td { padding: 2px 0; }
+    .totals-table .t-label { text-align: right; color: #333; width: 60%; }
+    .totals-table .t-value { text-align: right; font-weight: 700; width: 40%; }
+    .grand-row .t-label, .grand-row .t-value { font-size: 14px; font-weight: 800; }
+    .footer { margin-top: 12px; font-size: 9.5px; color: #333; text-align: center; }
+    .thanks { margin-top: 8px; text-align: center; font-size: 12px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+    <div class="center shop-name">${escapeHtml(COMPANY_NAME)}</div>
+    <div class="center shop-sub">Customer Bill / Receipt</div>
+
+    <div class="divider-solid"></div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="meta-label">Invoice No</td>
+            <td class="meta-value bold">${escapeHtml(bill.invoice_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Date</td>
+            <td class="meta-value">${escapeHtml(bill.invoice_date || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Job No</td>
+            <td class="meta-value bold">${escapeHtml(bill.job_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Customer</td>
+            <td class="meta-value">${escapeHtml(bill.customer_name || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Phone</td>
+            <td class="meta-value">${escapeHtml(bill.customer_phone || '-')}</td>
+        </tr>
+    </table>
+
+    <div class="divider-dashed"></div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="b-batch">Batch</th>
+                <th class="b-dress">Dress</th>
+                <th class="b-qty">Qty</th>
+                <th class="b-price">Price</th>
+                <th class="b-total">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml || '<tr><td colspan="5" class="center" style="padding:8px 0;">No items</td></tr>'}
+        </tbody>
+    </table>
+
+    <table class="totals-table">
+        <tr>
+            <td class="t-label">Sub Total</td>
+            <td class="t-value">${formatMoney(bill.sub_total)}</td>
+        </tr>
+        <tr>
+            <td class="t-label">Discount</td>
+            <td class="t-value">${formatMoney(bill.discount)}</td>
+        </tr>
+        <tr class="grand-row">
+            <td class="t-label">Grand Total</td>
+            <td class="t-value">${formatMoney(bill.grand_total)}</td>
+        </tr>
+    </table>
+
+    <div class="divider-dashed"></div>
+
+    <div class="thanks">Thank You!</div>
+
+    <div class="footer">
+        Printed: ${escapeHtml(new Date().toLocaleString())}
+    </div>
+
+</body>
+</html>
+        `;
+
+        const printWin = window.open('', '_blank', 'width=400,height=600');
+        if (!printWin) {
+            alert('Please allow popups to print the bill.');
+            return;
+        }
+
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+
+        printWin.onload = function () {
+            printWin.focus();
+            printWin.print();
+        };
+    }
+
+    document.getElementById('btnPrintBill')?.addEventListener('click', async function () {
+        try {
+            const res = await fetch("{{ route('tailoring.jobs.billData', $job) }}", {
+                headers: { "Accept": "application/json" }
+            });
+            const json = await res.json().catch(() => ({}));
+
+            if (!json.success || !json.data) {
+                alert('Could not load bill data.');
+                return;
+            }
+
+            printJobBill(json.data);
+        } catch (err) {
+            alert('Error loading bill: ' + err);
         }
     });
 </script>

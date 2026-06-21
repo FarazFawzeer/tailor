@@ -12,6 +12,7 @@ class Job extends Model
         'job_date',
         'due_date',
         'notes',
+        'discount',
         'current_stage_id',
         'created_by',
     ];
