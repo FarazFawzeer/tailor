@@ -325,6 +325,27 @@ class JobController extends Controller
 
         // ...unchanged existing measurement-loading code...
 
+         // ✅ Load existing measurements WITHOUT item->measurementSets relationship
+        $itemIds = $job->batches->flatMap(fn($b) => $b->items)->pluck('id')->all();
+
+        $sets = ItemMeasurementSet::query()
+            ->whereIn('job_batch_item_id', $itemIds)
+            ->with('values')
+            ->get();
+
+        // map: measurements[item_id][same|1..N][field_id] = value + notes
+        $existingMeasurements = [];
+        foreach ($sets as $set) {
+            $itemId = $set->job_batch_item_id;
+            $key = $set->piece_no === null ? 'same' : (string)$set->piece_no;
+
+            $existingMeasurements[$itemId][$key]['_notes'] = $set->notes;
+
+            foreach ($set->values as $v) {
+                $existingMeasurements[$itemId][$key][$v->measurement_field_id] = $v->value;
+            }
+        }
+
         return view('tailoring.jobs.edit_wizard', compact(
             'job',
             'customers',

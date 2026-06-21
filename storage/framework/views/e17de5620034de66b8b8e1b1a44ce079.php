@@ -151,7 +151,7 @@
 
         /* ===== Items table responsive fix ===== */
         .items-table {
-            min-width: 1250px;
+            min-width: 1400px;
             table-layout: auto;
         }
 
@@ -177,6 +177,10 @@
             min-width: 140px;
         }
 
+        .items-table .cutter-col {
+            min-width: 180px;
+        }
+
         .items-table .notes-col {
             min-width: 220px;
             white-space: normal;
@@ -188,7 +192,7 @@
 
         @media (max-width: 1366px) {
             .items-table {
-                min-width: 1350px;
+                min-width: 1500px;
             }
 
             .items-table .qty-col {
@@ -329,16 +333,36 @@
             ];
         }
 
+        // ✅ NEW: cutters list for assignment dropdowns
+        $cuttersJs = [];
+        foreach ($cutters as $u) {
+            $cuttersJs[] = [
+                'id' => $u->id,
+                'name' => $u->name,
+            ];
+        }
+
         $defaultFront = asset('/images/diagrams/default-front.png');
         $defaultBack = asset('/images/diagrams/default-back.png');
+
+        $companyNameJs = config('app.name', 'Tailoring Shop');
     ?>
 
     <script>
         const DRESS_TYPES = <?php echo json_encode($dressTypesJs, 15, 512) ?>;
         const TEMPLATES = <?php echo json_encode($templatesJs, 15, 512) ?>;
+        const CUTTERS = <?php echo json_encode($cuttersJs, 15, 512) ?>;
 
         const DEFAULT_FRONT = <?php echo json_encode($defaultFront, 15, 512) ?>;
         const DEFAULT_BACK = <?php echo json_encode($defaultBack, 15, 512) ?>;
+
+        const COMPANY_NAME = <?php echo json_encode($companyNameJs, 15, 512) ?>;
+
+        // Cache of template field metadata (label/unit) keyed by template id,
+        // populated whenever a template's fields are fetched. Used so the
+        // final "print all" step (after job save) can show real field labels
+        // instead of falling back to "Field #12".
+        const TEMPLATE_FIELDS_CACHE = {};
 
         const HIGHLIGHT_MAP = {
             chest: 'zone-chest',
@@ -367,6 +391,16 @@
             const list = TEMPLATES.filter(t => String(t.dress_type_id) === String(dressTypeId));
             let html = `<option value="">Select</option>`;
             html += list.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            return html;
+        }
+
+        // ✅ NEW: cutter dropdown options
+        function optionCutters(selectedId) {
+            let html = `<option value="">Select Cutter</option>`;
+            CUTTERS.forEach(u => {
+                const sel = String(u.id) === String(selectedId) ? 'selected' : '';
+                html += `<option value="${u.id}" ${sel}>${u.name}</option>`;
+            });
             return html;
         }
 
@@ -449,9 +483,16 @@
                             <input type="date" class="form-control" name="batches[${idx}][due_date]" required>
                         </div>
 
-                        <div class="col-md-6 mb-2">
+                        <div class="col-md-3 mb-2">
                             <label class="form-label">Batch Notes</label>
                             <input type="text" class="form-control" name="batches[${idx}][notes]" placeholder="Optional">
+                        </div>
+
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Default Cutter <span class="text-muted">(applies to new items)</span></label>
+                            <select class="form-select batchDefaultCutter">
+                                ${optionCutters('')}
+                            </select>
                         </div>
                     </div>
 
@@ -460,7 +501,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div>
                             <b>Items</b>
-                            <div class="muted-help">Add dress + template + qty + price. Then click “Measurements”.</div>
+                            <div class="muted-help">Add dress + template + qty + price + cutter. Then click “Measurements”.</div>
                         </div>
                         <button type="button" class="btn btn-outline-primary btn-sm btnAddItem">+ Add Item</button>
                     </div>
@@ -475,6 +516,7 @@
             <th class="price-col">Unit Price</th>
             <th class="total-col">Line Total</th>
             <th class="mode-col">Mode</th>
+            <th class="cutter-col">Assigned Cutter <span class="required-star">*</span></th>
             <th class="notes-col">Notes</th>
             <th class="action-col item-row-actions">Action</th>
         </tr>
@@ -508,10 +550,12 @@
             const tbody = batchCard.querySelector('.itemsBody');
             const itemIndex = tbody.querySelectorAll('tr').length;
 
+            const defaultCutterId = batchCard.querySelector('.batchDefaultCutter')?.value || '';
+
             const tr = document.createElement('tr');
             tr.dataset.itemIndex = itemIndex;
 
-     tr.innerHTML = `
+            tr.innerHTML = `
     <td>
         <select class="form-select dressTypeSelect"
             name="batches[${idx}][items][${itemIndex}][dress_type_id]" required>
@@ -551,6 +595,13 @@
         </div>
     </td>
 
+    <td class="cutter-col">
+        <select class="form-select assignedCutterSelect" required
+            name="batches[${idx}][items][${itemIndex}][assigned_cutter_id]">
+            ${optionCutters(defaultCutterId)}
+        </select>
+    </td>
+
     <td class="notes-col">
         <input type="text" class="form-control"
             name="batches[${idx}][items][${itemIndex}][notes]" placeholder="Optional">
@@ -582,6 +633,7 @@
 
         let currentRow = null;
         let currentPrefix = null;
+        let currentTemplateId = null;
 
         function buildDiagramHtml(frontImg, backImg) {
             return `
@@ -639,19 +691,20 @@
                         <div class="card-body">
                             <div class="row">
                                 ${fields.map(f => `
-                                        <div class="col-md-4 mb-3">
-                                            <label class="form-label">
-                                                ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
-                                            </label>
-                                            <input
-                                                type="${inputType(f)}"
-                                                step="0.01"
-                                                class="form-control measure-field"
-                                                data-zone="${zoneFor(f)}"
-                                                name="${prefix}[measurements][same][${f.id}]"
-                                                placeholder="Enter ${f.label}">
-                                        </div>
-                                    `).join('')}
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">
+                                                        ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
+                                                    </label>
+                                                    <input
+                                                        type="${inputType(f)}"
+                                                        step="0.01"
+                                                        class="form-control measure-field"
+                                                        data-zone="${zoneFor(f)}"
+                                                        data-field-id="${f.id}"
+                                                        name="${prefix}[measurements][same][${f.id}]"
+                                                        placeholder="Enter ${f.label}">
+                                                </div>
+                                            `).join('')}
                             </div>
 
                             <div class="mb-0">
@@ -688,19 +741,20 @@
                             <div class="card-body">
                                 <div class="row">
                                     ${fields.map(f => `
-                                            <div class="col-md-4 mb-3">
-                                                <label class="form-label">
-                                                    ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
-                                                </label>
-                                                <input
-                                                    type="${inputType(f)}"
-                                                    step="0.01"
-                                                    class="form-control measure-field"
-                                                    data-zone="${zoneFor(f)}"
-                                                    name="${prefix}[measurements][${p}][${f.id}]"
-                                                    placeholder="Enter ${f.label}">
-                                            </div>
-                                        `).join('')}
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            ${f.label} <small class="text-muted">(${f.unit})</small> ${reqStar(f)}
+                                                        </label>
+                                                        <input
+                                                            type="${inputType(f)}"
+                                                            step="0.01"
+                                                            class="form-control measure-field"
+                                                            data-zone="${zoneFor(f)}"
+                                                            data-field-id="${f.id}"
+                                                            name="${prefix}[measurements][${p}][${f.id}]"
+                                                            placeholder="Enter ${f.label}">
+                                                    </div>
+                                                `).join('')}
                                 </div>
 
                                 <div class="mb-0">
@@ -789,6 +843,8 @@
             const qty = parseInt(row.querySelector('.qtyInput').value || '1', 10);
             const perPiece = row.querySelector('.perPieceCheck').checked;
 
+            currentTemplateId = templateId || null;
+
             const dressObj = DRESS_TYPES.find(d => String(d.id) === String(dressTypeId));
             const frontImg = dressObj?.front_img || DEFAULT_FRONT;
             const backImg = dressObj?.back_img || DEFAULT_BACK;
@@ -818,6 +874,10 @@
                 const json = await res.json().catch(() => ({}));
                 const fields = json?.data || [];
 
+                // ✅ cache field metadata (label/unit) for this template, used later
+                // when building "print all" receipts after the whole job is saved.
+                TEMPLATE_FIELDS_CACHE[templateId] = fields;
+
                 modalFormArea.innerHTML = buildMeasurementFormHtml(fields, currentPrefix, qty, perPiece);
 
                 // ✅ If already saved hidden inputs exist, re-fill inputs in modal
@@ -835,7 +895,318 @@
             modal.show();
         }
 
-        // ✅ save measurements into hidden inputs (REAL submit values)
+        // =====================================================================
+        // RECEIPT PRINTING (80mm thermal printer friendly)
+        // =====================================================================
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function printMeasurementReceipt(payload) {
+            const piecesHtml = (payload.pieces || []).map(piece => {
+                const rows = (piece.fields || []).map(f => `
+                    <tr>
+                        <td class="f-label">${escapeHtml(f.label)}${f.unit ? ` <span class="f-unit">(${escapeHtml(f.unit)})</span>` : ''}</td>
+                        <td class="f-value">${f.value !== null && f.value !== '' && f.value !== undefined ? escapeHtml(String(f.value)) : '-'}</td>
+                    </tr>
+                `).join('');
+
+                return `
+                    <div class="piece-block">
+                        <div class="piece-title">${escapeHtml(piece.title)}</div>
+                        <table class="meas-table">
+                            ${rows}
+                        </table>
+                        ${piece.notes ? `<div class="piece-notes">Note: ${escapeHtml(piece.notes)}</div>` : ''}
+                    </div>
+                `;
+            }).join('<div class="divider-dashed"></div>');
+
+            const now = new Date();
+            const printedAt = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Measurement Receipt</title>
+<style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+        width: 80mm;
+        margin: 0 auto;
+        padding: 4mm 4mm 8mm 4mm;
+        font-family: 'Courier New', Consolas, monospace;
+        font-size: 12px;
+        color: #000;
+        background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .shop-name { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .shop-sub { font-size: 10px; color: #333; margin-bottom: 6px; }
+    .divider-solid { border-top: 1px solid #000; margin: 6px 0; }
+    .divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
+    .meta-table { width: 100%; font-size: 12px; margin-bottom: 4px; }
+    .meta-table td { padding: 1px 0; vertical-align: top; }
+    .meta-label { width: 38%; font-weight: 700; white-space: nowrap; }
+    .meta-value { width: 62%; }
+    .section-title {
+        font-size: 13px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.5px; margin: 6px 0 4px 0; text-align: center;
+        background: #000; color: #fff; padding: 3px 0;
+    }
+    .piece-block { margin-bottom: 4px; }
+    .piece-title { font-weight: 700; font-size: 12.5px; margin-bottom: 3px; text-decoration: underline; }
+    .meas-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .meas-table tr { border-bottom: 1px dotted #999; }
+    .meas-table td { padding: 3px 0; }
+    .f-label { width: 65%; }
+    .f-unit { font-size: 10px; color: #444; }
+    .f-value { width: 35%; text-align: right; font-weight: 800; font-size: 13px; }
+    .piece-notes { font-size: 10.5px; font-style: italic; margin-top: 2px; color: #222; }
+    .item-notes-box { font-size: 11px; margin-top: 6px; padding: 4px; border: 1px dashed #000; }
+    .footer { margin-top: 10px; font-size: 9.5px; color: #333; text-align: center; }
+    .qty-badge { display: inline-block; border: 1px solid #000; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+    <div class="center shop-name">${escapeHtml(COMPANY_NAME)}</div>
+    <div class="center shop-sub">Measurement Slip</div>
+
+    <div class="divider-solid"></div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="meta-label">Job No</td>
+            <td class="meta-value bold">${escapeHtml(payload.job_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Batch No</td>
+            <td class="meta-value">${escapeHtml(payload.batch_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Dress</td>
+            <td class="meta-value bold">${escapeHtml(payload.dress_name || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Template</td>
+            <td class="meta-value">${escapeHtml(payload.template_name || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Qty</td>
+            <td class="meta-value"><span class="qty-badge">${escapeHtml(String(payload.qty ?? '-'))}</span></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Measurements</div>
+
+    ${piecesHtml || '<div class="center" style="padding:10px 0;">No measurement data</div>'}
+
+    ${payload.item_notes ? `<div class="item-notes-box"><b>Item Notes:</b> ${escapeHtml(payload.item_notes)}</div>` : ''}
+
+    <div class="divider-dashed"></div>
+
+    <div class="footer">
+        Printed: ${escapeHtml(printedAt)}
+    </div>
+
+</body>
+</html>
+            `;
+
+            const printWin = window.open('', '_blank', 'width=400,height=600');
+            if (!printWin) {
+                alert('Please allow popups to print the receipt.');
+                return;
+            }
+
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
+
+            printWin.onload = function() {
+                printWin.focus();
+                printWin.print();
+            };
+        }
+
+        // Builds the receipt payload using the row + the modal form that was just used to save.
+        // Job/Batch numbers don't exist yet at this point (job not saved), so they show
+        // "Pending Save" — corrected later in the final "print all" step after job save.
+        function buildPrintPayloadFromRow(row, modalFormArea, templateId) {
+            const dressName = row.querySelector('.dressTypeSelect')?.selectedOptions?.[0]?.textContent ?? '';
+            const templateName = row.querySelector('.templateSelect')?.selectedOptions?.[0]?.textContent ?? '';
+            const qty = row.querySelector('.qtyInput')?.value || '';
+            const itemNotes = row.querySelector('input[name*="[notes]"]:not([name*="notes_map"])')?.value || '';
+            const perPiece = row.querySelector('.perPieceCheck')?.checked;
+
+            const pieces = [];
+
+            if (!templateId) {
+                return {
+                    job_no: 'Pending Save',
+                    batch_no: 'Pending Save',
+                    dress_name: dressName,
+                    template_name: templateName,
+                    qty,
+                    per_piece: perPiece,
+                    pieces: [],
+                    item_notes: itemNotes
+                };
+            }
+
+            if (!perPiece) {
+                const fields = [];
+                modalFormArea.querySelectorAll('input[name*="[measurements][same]"]').forEach(inp => {
+                    const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent?.trim() || inp.name;
+                    fields.push({
+                        label: label.replace(/\*$/, '').trim(),
+                        unit: '',
+                        value: inp.value
+                    });
+                });
+                const notesInput = modalFormArea.querySelector('input[name*="[notes_map][same]"]');
+                pieces.push({
+                    title: 'All Pieces (Same)',
+                    fields,
+                    notes: notesInput?.value || ''
+                });
+            } else {
+                const tabPanes = modalFormArea.querySelectorAll('.tab-pane');
+                tabPanes.forEach((pane, idx) => {
+                    const pieceNo = idx + 1;
+                    const fields = [];
+                    pane.querySelectorAll(`input[name*="[measurements][${pieceNo}]"]`).forEach(inp => {
+                        const label = inp.closest('.col-md-4')?.querySelector('label')?.textContent
+                            ?.trim() || inp.name;
+                        fields.push({
+                            label: label.replace(/\*$/, '').trim(),
+                            unit: '',
+                            value: inp.value
+                        });
+                    });
+                    const notesInput = pane.querySelector(`input[name*="[notes_map][${pieceNo}]"]`);
+                    pieces.push({
+                        title: `Piece ${pieceNo}`,
+                        fields,
+                        notes: notesInput?.value || ''
+                    });
+                });
+            }
+
+            return {
+                job_no: 'Pending Save',
+                batch_no: 'Pending Save',
+                dress_name: dressName,
+                template_name: templateName,
+                qty,
+                per_piece: perPiece,
+                pieces,
+                item_notes: itemNotes
+            };
+        }
+
+        // Walks every batch/item row in the form, rebuilds print payloads from hidden
+        // measurement inputs, using the REAL job_no and the on-screen batch label.
+        // Uses TEMPLATE_FIELDS_CACHE so field labels/units are real, not "Field #12".
+        function collectAllSavedItemsForPrint(realJobNo) {
+            const results = [];
+
+            document.querySelectorAll('.batch-card').forEach((batchCard, batchDisplayIdx) => {
+                const batchNoLabel = `Batch #${batchDisplayIdx + 1}`;
+
+                batchCard.querySelectorAll('tbody.itemsBody tr').forEach(row => {
+                    const hiddenMeas = row.querySelectorAll('input.hidden-meas[name*="[measurements]"]');
+                    if (!hiddenMeas || hiddenMeas.length === 0) return;
+
+                    const templateId = row.querySelector('.templateSelect')?.value || '';
+                    const fieldMeta = TEMPLATE_FIELDS_CACHE[templateId] || [];
+                    const fieldMetaById = {};
+                    fieldMeta.forEach(f => {
+                        fieldMetaById[String(f.id)] = f;
+                    });
+
+                    const dressName = row.querySelector('.dressTypeSelect')?.selectedOptions?.[0]
+                        ?.textContent ?? '';
+                    const templateName = row.querySelector('.templateSelect')?.selectedOptions?.[0]
+                        ?.textContent ?? '';
+                    const qty = row.querySelector('.qtyInput')?.value || '';
+                    const itemNotes = row.querySelector('input[name*="[notes]"]:not([name*="notes_map"])')
+                        ?.value || '';
+                    const perPiece = row.querySelector('.perPieceCheck')?.checked;
+
+                    const pieceMap = {};
+
+                    hiddenMeas.forEach(inp => {
+                        const m = inp.name.match(/\[measurements\]\[([^\]]+)\]\[(\d+)\]/);
+                        if (!m) return;
+                        const pieceKey = m[1];
+                        const fieldId = m[2];
+                        if (!pieceMap[pieceKey]) pieceMap[pieceKey] = {
+                            fields: {},
+                            notes: ''
+                        };
+                        pieceMap[pieceKey].fields[fieldId] = inp.value;
+                    });
+
+                    row.querySelectorAll('input.hidden-meas[name*="[notes_map]"]').forEach(inp => {
+                        const m = inp.name.match(/\[notes_map\]\[([^\]]+)\]/);
+                        if (!m) return;
+                        const pieceKey = m[1];
+                        if (!pieceMap[pieceKey]) pieceMap[pieceKey] = {
+                            fields: {},
+                            notes: ''
+                        };
+                        pieceMap[pieceKey].notes = inp.value;
+                    });
+
+                    const pieces = Object.keys(pieceMap).map(pieceKey => {
+                        const title = pieceKey === 'same' ? 'All Pieces (Same)' :
+                            `Piece ${pieceKey}`;
+                        const fields = Object.entries(pieceMap[pieceKey].fields).map(([fieldId,
+                            value
+                        ]) => {
+                            const meta = fieldMetaById[fieldId];
+                            return {
+                                label: meta?.label || `Field #${fieldId}`,
+                                unit: meta?.unit || '',
+                                value
+                            };
+                        });
+                        return {
+                            title,
+                            fields,
+                            notes: pieceMap[pieceKey].notes
+                        };
+                    });
+
+                    results.push({
+                        job_no: realJobNo,
+                        batch_no: batchNoLabel,
+                        dress_name: dressName,
+                        template_name: templateName,
+                        qty,
+                        per_piece: perPiece,
+                        pieces,
+                        item_notes: itemNotes
+                    });
+                });
+            });
+
+            return results;
+        }
+
+        // ✅ save measurements into hidden inputs (REAL submit values) + offer to print
         btnSaveMeasurements.addEventListener('click', function() {
             if (!currentRow) return;
 
@@ -865,7 +1236,23 @@
             store.innerHTML = `<span class="badge bg-success">Measurements Saved</span>`;
             store.classList.remove('d-none');
 
+            // build payload BEFORE hiding modal (field labels read from live DOM)
+            const printPayload = buildPrintPayloadFromRow(currentRow, modalFormArea, templateId);
+
             bootstrap.Modal.getInstance(measurementModalEl).hide();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Measurements Saved',
+                text: 'Do you want to print the measurement receipt now? (Job/Batch No. will show as "Pending Save" until the job is fully saved.)',
+                showCancelButton: true,
+                confirmButtonText: 'Print',
+                cancelButtonText: 'Not now'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    printMeasurementReceipt(printPayload);
+                }
+            });
         });
 
         // ===== Events =====
@@ -932,6 +1319,17 @@
             }
         });
 
+        // ✅ batch default cutter changed -> apply to item rows that don't already have a cutter chosen
+        batchesArea.addEventListener('change', function(e) {
+            if (!e.target.classList.contains('batchDefaultCutter')) return;
+            const batchCard = e.target.closest('.batch-card');
+            const newVal = e.target.value;
+
+            batchCard.querySelectorAll('.assignedCutterSelect').forEach(sel => {
+                if (!sel.value) sel.value = newVal;
+            });
+        });
+
         // ✅ price + qty live totals
         batchesArea.addEventListener('input', function(e) {
             if (e.target.classList.contains('qtyInput') || e.target.classList.contains('unitPriceInput')) {
@@ -953,9 +1351,20 @@
             const box = document.getElementById('message');
             box.innerHTML = '';
 
+            // ✅ validate: cutter must be assigned for every item
+            const allRows = batchesArea.querySelectorAll('tr');
+            for (const r of allRows) {
+                const cutterSelect = r.querySelector('.assignedCutterSelect');
+                if (cutterSelect && !cutterSelect.value) {
+                    box.innerHTML = `<div class="alert alert-danger">
+                        Please assign a Cutter for every item before saving.
+                    </div>`;
+                    return;
+                }
+            }
+
             // ✅ validate: template selected => must have hidden measurement inputs
-            const rows = batchesArea.querySelectorAll('tr');
-            for (const r of rows) {
+            for (const r of allRows) {
                 const templateId = r.querySelector('.templateSelect')?.value;
                 if (templateId) {
                     const hidden = r.querySelectorAll('input.hidden-meas[name*="[measurements]"]');
@@ -988,9 +1397,34 @@
 
                 box.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
 
-                setTimeout(() => {
-                    window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data.data.id;
-                }, 700);
+                const realJobNo = data.message?.match(/\(([^)]+)\)/)?.[1] || data.data?.id;
+                const itemsWithMeasurements = collectAllSavedItemsForPrint(realJobNo);
+
+                if (itemsWithMeasurements.length > 0) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Job Saved',
+                        text: `Print measurement receipt(s) for ${itemsWithMeasurements.length} item(s) now?`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Print All',
+                        cancelButtonText: 'Skip'
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            itemsWithMeasurements.forEach((payload, idx) => {
+                                setTimeout(() => printMeasurementReceipt(payload), idx *
+                                    600);
+                            });
+                        }
+                        setTimeout(() => {
+                            window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data
+                                .data.id;
+                        }, 800 + itemsWithMeasurements.length * 600);
+                    });
+                } else {
+                    setTimeout(() => {
+                        window.location.href = "<?php echo e(url('tailoring/jobs')); ?>/" + data.data.id;
+                    }, 700);
+                }
 
             }).catch(err => {
                 box.innerHTML = `<div class="alert alert-danger">Error: ${err}</div>`;

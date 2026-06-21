@@ -18,6 +18,8 @@
 
     $defaultFront = asset('/images/diagrams/default-front.png');
     $defaultBack  = asset('/images/diagrams/default-back.png');
+
+    $companyNameJs = config('app.name', 'Tailoring Shop');
 @endphp
 
 <style>
@@ -40,6 +42,9 @@
 
     .stage-pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background: rgba(33,37,41,.06); font-size: 12px; }
     .stage-pill b { font-size: 12px; }
+
+    .cutter-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background: rgba(25,135,84,.10); color:#198754; font-size: 12px; border: 1px solid rgba(25,135,84,.18); }
+    .cutter-pill.unassigned { background: rgba(220,53,69,.08); color:#dc3545; border-color: rgba(220,53,69,.18); }
 
     .price-box { border:1px dashed rgba(0,0,0,.15); border-radius: 12px; padding: 12px 14px; background:#fff; }
     .price-box .label { color:#6c757d; font-size: 12px; }
@@ -194,6 +199,15 @@
 
     <div class="card-body">
         @forelse($groups as $g)
+            @php
+                // ✅ distinct cutters assigned within this group
+                $groupCutterNames = collect($g['items'])
+                    ->map(fn($row) => $row->assignedCutter?->name)
+                    ->filter()
+                    ->unique()
+                    ->values();
+            @endphp
+
             <div class="group-card mb-3">
                 <div class="group-head">
                     <div>
@@ -205,6 +219,21 @@
                             Template: {{ $g['template_name'] }}
                             | Unit Price: {{ number_format((float)$g['unit_price'], 2) }}
                             | Total: <b>{{ number_format((float)$g['line_total'], 2) }}</b>
+                        </div>
+
+                        {{-- ✅ Cutter(s) for this group --}}
+                        <div class="mt-2">
+                            @if($groupCutterNames->isNotEmpty())
+                                <span class="cutter-pill">
+                                    <iconify-icon icon="solar:scissors-linear"></iconify-icon>
+                                    Cutter(s): {{ $groupCutterNames->implode(', ') }}
+                                </span>
+                            @else
+                                <span class="cutter-pill unassigned">
+                                    <iconify-icon icon="solar:scissors-linear"></iconify-icon>
+                                    No Cutter Assigned
+                                </span>
+                            @endif
                         </div>
                     </div>
 
@@ -241,12 +270,56 @@
                                     <th >Batch</th>
                                     <th >Qty</th>
                                     <th >Stage</th>
+                                    <th style="min-width:150px;">Cutter</th>
                                     <th>Notes</th>
-                                    <th style="width:300px;">Actions</th>
+                                    <th style="width:330px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($g['items'] as $row)
+                                    @php
+                                        // ✅ Build the print payload for this row (server-side, always accurate)
+                                        $printPayloadRow = null;
+
+                                        if ($row->measurementTemplate) {
+                                            $piecesForPrint = [];
+                                            $fieldsList = $row->measurementTemplate->fields ?? collect();
+                                            $setsForRow = $row->measurementSets ?? collect();
+
+                                            foreach ($setsForRow as $set) {
+                                                $pieceTitle = $set->piece_no === null ? 'All Pieces (Same)' : "Piece {$set->piece_no}";
+                                                $fieldRows = [];
+                                                $valuesByFieldId = $set->values->keyBy('measurement_field_id');
+
+                                                foreach ($fieldsList as $f) {
+                                                    $v = $valuesByFieldId->get($f->id);
+                                                    $fieldRows[] = [
+                                                        'label' => $f->label,
+                                                        'unit' => $f->unit,
+                                                        'value' => $v?->value,
+                                                    ];
+                                                }
+
+                                                $piecesForPrint[] = [
+                                                    'title' => $pieceTitle,
+                                                    'fields' => $fieldRows,
+                                                    'notes' => $set->notes,
+                                                ];
+                                            }
+
+                                            $printPayloadRow = [
+                                                'job_no' => $job->job_no,
+                                                'batch_no' => $row->jobBatch?->batch_no,
+                                                'dress_name' => $row->dressType?->name,
+                                                'template_name' => $row->measurementTemplate?->name,
+                                                'qty' => $row->qty,
+                                                'per_piece' => (bool)$row->per_piece_measurement,
+                                                'pieces' => $piecesForPrint,
+                                                'item_notes' => $row->notes,
+                                            ];
+                                        }
+                                    @endphp
+
                                     <tr>
                                         <td>{{ $row->jobBatch?->batch_no ?? '-' }}</td>
                                         <td class="fw-bold">{{ $row->qty }}</td>
@@ -259,9 +332,19 @@
                                                 <span class="badge bg-success ms-1">Completed</span>
                                             @endif
                                         </td>
+                                        <td>
+                                            @if($row->assignedCutter)
+                                                <span class="badge bg-secondary">
+                                                    <iconify-icon icon="solar:scissors-linear"></iconify-icon>
+                                                    {{ $row->assignedCutter->name }}
+                                                </span>
+                                            @else
+                                                <span class="badge bg-danger">Not Assigned</span>
+                                            @endif
+                                        </td>
                                         <td class="text-muted">{{ $row->notes ?? '-' }}</td>
                                         <td>
-                                            <div class="d-flex gap-2">
+                                            <div class="d-flex gap-2 flex-wrap">
                                                 <a class="btn btn-outline-primary btn-sm w-100 {{ $row->completed_at ? 'disabled' : '' }}"
                                                    href="{{ $row->completed_at ? '#' : route('tailoring.handover.create', $row) }}" style="width: 150px;">
                                                     Single Handover
@@ -271,6 +354,15 @@
                                                    href="{{ route('tailoring.measurements.edit', [$job, $row->jobBatch, $row]) }}"  style="width: 150px;">
                                                     Measurements
                                                 </a>
+
+                                                @if($printPayloadRow)
+                                                    <button type="button"
+                                                        class="btn btn-outline-success btn-sm w-100 btnPrintReceipt"
+                                                        data-print-payload='@json($printPayloadRow)'
+                                                        style="width: 150px;">
+                                                        <iconify-icon icon="solar:printer-linear"></iconify-icon> Print
+                                                    </button>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -321,6 +413,7 @@
                                 <th style="min-width:220px;">Template</th>
                                 <th >Qty</th>
                                 <th >Mode</th>
+                                <th style="min-width:150px;">Cutter</th>
                                 <th >Unit Price</th>
                                 <th >Line Total</th>
                                 <th >Item Notes</th>
@@ -387,6 +480,16 @@
                                             <span class="badge bg-success">Same</span>
                                         @endif
                                     </td>
+                                    <td>
+                                        @if($it->assignedCutter)
+                                            <span class="badge bg-secondary">
+                                                <iconify-icon icon="solar:scissors-linear"></iconify-icon>
+                                                {{ $it->assignedCutter->name }}
+                                            </span>
+                                        @else
+                                            <span class="badge bg-danger">Not Assigned</span>
+                                        @endif
+                                    </td>
                                     <td>{{ number_format((float)$it->unit_price, 2) }}</td>
                                     <td class="fw-bold">{{ number_format((float)$it->line_total, 2) }}</td>
                                     <td>{{ $it->notes ?? '-' }}</td>
@@ -404,12 +507,20 @@
                                                 href="{{ route('tailoring.measurements.edit', [$job, $batch, $it]) }}">
                                                 Open Measurements 
                                             </a>
+
+                                            @if($payload)
+                                                <button type="button"
+                                                    class="btn btn-outline-success btn-sm btnPrintReceiptFromView"
+                                                    data-payload='@json($payload)'>
+                                                    <iconify-icon icon="solar:printer-linear"></iconify-icon> Print
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted">No items in this batch.</td>
+                                    <td colspan="9" class="text-center text-muted">No items in this batch.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -448,6 +559,7 @@
 
 <script>
     const HIGHLIGHT_MAP = @json($highlightMap);
+    const COMPANY_NAME = @json($companyNameJs);
 
     const vmModalEl = document.getElementById('viewMeasurementModal');
     const vmBody = document.getElementById('vmBody');
@@ -638,6 +750,205 @@
 
         const modal = new bootstrap.Modal(vmModalEl);
         modal.show();
+    });
+
+    // =====================================================================
+    // RECEIPT PRINTING (80mm thermal printer friendly)
+    // =====================================================================
+
+    function escapeHtml(str) {
+        return String(str ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function printMeasurementReceipt(payload) {
+        const piecesHtml = (payload.pieces || []).map(piece => {
+            const rows = (piece.fields || []).map(f => `
+                <tr>
+                    <td class="f-label">${escapeHtml(f.label)}${f.unit ? ` <span class="f-unit">(${escapeHtml(f.unit)})</span>` : ''}</td>
+                    <td class="f-value">${f.value !== null && f.value !== '' && f.value !== undefined ? escapeHtml(String(f.value)) : '-'}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="piece-block">
+                    <div class="piece-title">${escapeHtml(piece.title)}</div>
+                    <table class="meas-table">
+                        ${rows}
+                    </table>
+                    ${piece.notes ? `<div class="piece-notes">Note: ${escapeHtml(piece.notes)}</div>` : ''}
+                </div>
+            `;
+        }).join('<div class="divider-dashed"></div>');
+
+        const now = new Date();
+        const printedAt = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Measurement Receipt</title>
+<style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+        width: 80mm;
+        margin: 0 auto;
+        padding: 4mm 4mm 8mm 4mm;
+        font-family: 'Courier New', Consolas, monospace;
+        font-size: 12px;
+        color: #000;
+        background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .shop-name { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .shop-sub { font-size: 10px; color: #333; margin-bottom: 6px; }
+    .divider-solid { border-top: 1px solid #000; margin: 6px 0; }
+    .divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
+    .meta-table { width: 100%; font-size: 12px; margin-bottom: 4px; }
+    .meta-table td { padding: 1px 0; vertical-align: top; }
+    .meta-label { width: 38%; font-weight: 700; white-space: nowrap; }
+    .meta-value { width: 62%; }
+    .section-title {
+        font-size: 13px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.5px; margin: 6px 0 4px 0; text-align: center;
+        background: #000; color: #fff; padding: 3px 0;
+    }
+    .piece-block { margin-bottom: 4px; }
+    .piece-title { font-weight: 700; font-size: 12.5px; margin-bottom: 3px; text-decoration: underline; }
+    .meas-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .meas-table tr { border-bottom: 1px dotted #999; }
+    .meas-table td { padding: 3px 0; }
+    .f-label { width: 65%; }
+    .f-unit { font-size: 10px; color: #444; }
+    .f-value { width: 35%; text-align: right; font-weight: 800; font-size: 13px; }
+    .piece-notes { font-size: 10.5px; font-style: italic; margin-top: 2px; color: #222; }
+    .item-notes-box { font-size: 11px; margin-top: 6px; padding: 4px; border: 1px dashed #000; }
+    .footer { margin-top: 10px; font-size: 9.5px; color: #333; text-align: center; }
+    .qty-badge { display: inline-block; border: 1px solid #000; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+    <div class="center shop-name">${escapeHtml(COMPANY_NAME)}</div>
+    <div class="center shop-sub">Measurement Slip</div>
+
+    <div class="divider-solid"></div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="meta-label">Job No</td>
+            <td class="meta-value bold">${escapeHtml(payload.job_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Batch No</td>
+            <td class="meta-value">${escapeHtml(payload.batch_no || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Dress</td>
+            <td class="meta-value bold">${escapeHtml(payload.dress_name || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Template</td>
+            <td class="meta-value">${escapeHtml(payload.template_name || '-')}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Qty</td>
+            <td class="meta-value"><span class="qty-badge">${escapeHtml(String(payload.qty ?? '-'))}</span></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Measurements</div>
+
+    ${piecesHtml || '<div class="center" style="padding:10px 0;">No measurement data</div>'}
+
+    ${payload.item_notes ? `<div class="item-notes-box"><b>Item Notes:</b> ${escapeHtml(payload.item_notes)}</div>` : ''}
+
+    <div class="divider-dashed"></div>
+
+    <div class="footer">
+        Printed: ${escapeHtml(printedAt)}
+    </div>
+
+</body>
+</html>
+        `;
+
+        const printWin = window.open('', '_blank', 'width=400,height=600');
+        if (!printWin) {
+            alert('Please allow popups to print the receipt.');
+            return;
+        }
+
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+
+        printWin.onload = function () {
+            printWin.focus();
+            printWin.print();
+        };
+    }
+
+    // Adapts the "view in screen" payload shape (fields as array of {id,label,unit,...}
+    // plus an "existing" map keyed by piece) into the {pieces:[{title,fields,notes}]}
+    // shape that printMeasurementReceipt expects.
+    function adaptViewPayloadToPrintPayload(payload) {
+        const pieces = [];
+
+        if (!payload.per_piece) {
+            const map = payload.existing?.same || {};
+            const fields = (payload.fields || []).map(f => ({
+                label: f.label,
+                unit: f.unit,
+                value: map[String(f.id)] ?? null
+            }));
+            pieces.push({ title: 'All Pieces (Same)', fields, notes: map._notes || '' });
+        } else {
+            for (let p = 1; p <= payload.qty; p++) {
+                const map = payload.existing?.[String(p)] || {};
+                const fields = (payload.fields || []).map(f => ({
+                    label: f.label,
+                    unit: f.unit,
+                    value: map[String(f.id)] ?? null
+                }));
+                pieces.push({ title: `Piece ${p}`, fields, notes: map._notes || '' });
+            }
+        }
+
+        return {
+            job_no: payload.job_no,
+            batch_no: payload.batch_no,
+            dress_name: payload.dress_name,
+            template_name: payload.template_name,
+            qty: payload.qty,
+            per_piece: payload.per_piece,
+            pieces,
+            item_notes: ''
+        };
+    }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btnPrintReceipt');
+        if (btn) {
+            const payload = JSON.parse(btn.dataset.printPayload || '{}');
+            printMeasurementReceipt(payload);
+            return;
+        }
+
+        const btn2 = e.target.closest('.btnPrintReceiptFromView');
+        if (btn2) {
+            const rawPayload = JSON.parse(btn2.dataset.payload || '{}');
+            printMeasurementReceipt(adaptViewPayloadToPrintPayload(rawPayload));
+            return;
+        }
     });
 </script>
 @endsection
