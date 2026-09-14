@@ -728,9 +728,7 @@ class JobController extends Controller
             foreach ($job->batches as $batch) {
 
                 foreach ($batch->items as $item) {
-
                     $item->measurementSets()->delete();
-                    $item->handoverLogs()->delete();
                 }
 
                 $batch->items()->delete();
@@ -743,7 +741,6 @@ class JobController extends Controller
         return redirect()->route('tailoring.jobs.index')
             ->with('success', 'Job deleted successfully.');
     }
-
 
     /**
      * Builds the structured payload needed to render the 80mm customer bill/receipt.

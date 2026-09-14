@@ -84,4 +84,6 @@ class JobBatchItem extends Model
     {
         return $this->belongsTo(\App\Models\User::class, 'assigned_cutter_id');
     }
+
+    
 }

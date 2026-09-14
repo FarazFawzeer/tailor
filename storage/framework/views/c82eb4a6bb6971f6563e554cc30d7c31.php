@@ -184,7 +184,7 @@ Swal.fire({
             <?php echo method_field('DELETE'); ?>
 
             <button type="button" class="btn btn-outline-danger btn-sm w-100 btnDelete">
-                Delete
+                Deletess
             </button>
         </form>
 
