@@ -15,6 +15,23 @@ class StaffController extends Controller
         return ['front_desk', 'cutter', 'sewing', 'button', 'ironing', 'packaging'];
     }
 
+    // "User Name" is stored in users.email, so show user-friendly validation text
+    private function validationMessages(): array
+    {
+        return [
+            'email.unique'   => 'This user name is already taken. Please choose a different user name.',
+            'email.required' => 'The user name field is required.',
+        ];
+    }
+
+    private function validationAttributes(): array
+    {
+        return [
+            'name'  => 'full name',
+            'email' => 'user name',
+        ];
+    }
+
     public function index(Request $request)
     {
         $q = trim((string)$request->get('q'));
@@ -24,8 +41,10 @@ class StaffController extends Controller
                 $r->whereIn('name', $this->staffRoles());
             })
             ->when($q, function ($query) use ($q) {
-                $query->where('name', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%");
+                $query->where(function ($w) use ($q) {
+                    $w->where('name', 'like', "%{$q}%")
+                        ->orWhere('email', 'like', "%{$q}%");
+                });
             })
             ->with(['roles', 'staffProfile'])
             ->latest()
@@ -56,7 +75,7 @@ class StaffController extends Controller
             'nic'      => ['nullable', 'string', 'max:50'],
             'address'  => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], $this->validationMessages(), $this->validationAttributes());
 
         $user = User::create([
             'name' => $data['name'],
@@ -102,7 +121,8 @@ class StaffController extends Controller
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'max:255', 'unique:users,email,' . $staff->id],
+            // This is "User Name" but saved in users.email column (not a real email)
+            'email'    => ['required', 'string', 'max:255', 'unique:users,email,' . $staff->id],
             'password' => ['nullable', 'string', 'min:6', 'confirmed'],
             'role'     => ['required', 'in:' . implode(',', $this->staffRoles())],
 
@@ -110,7 +130,7 @@ class StaffController extends Controller
             'nic'      => ['nullable', 'string', 'max:50'],
             'address'  => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], $this->validationMessages(), $this->validationAttributes());
 
         $update = [
             'name' => $data['name'],

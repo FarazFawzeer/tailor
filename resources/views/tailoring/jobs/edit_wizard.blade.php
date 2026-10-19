@@ -427,6 +427,15 @@
             return html;
         }
 
+        function optionCutters(selectedId) {
+            let html = `<option value="">Select Cutter</option>`;
+            CUTTERS.forEach(u => {
+                const sel = String(u.id) === String(selectedId) ? 'selected' : '';
+                html += `<option value="${u.id}" ${sel}>${u.name}</option>`;
+            });
+            return html;
+        }
+
         function money(n) {
             const x = Number(n || 0);
             return x.toLocaleString(undefined, {
@@ -579,6 +588,7 @@
                                     <th class="price-col">Unit Price</th>
                                     <th class="total-col">Line Total</th>
                                     <th class="mode-col">Mode</th>
+                                    <th class="cutter-col">Assigned Cutter <span class="required-star">*</span></th>
                                     <th class="notes-col">Notes</th>
                                     <th class="action-col item-row-actions">Action</th>
                                 </tr>
@@ -951,8 +961,17 @@
             enableDiagramSwitching(frontImg, backImg);
             enableFieldHighlightingOnce();
 
-            const modal = new bootstrap.Modal(measurementModalEl);
+            const modal = bootstrap.Modal.getOrCreateInstance(measurementModalEl);
             modal.show();
+        }
+
+        // Remove any backdrop / scroll-lock left behind after closing modal + popup
+        function cleanupModalLeftovers() {
+            if (document.querySelector('.modal.show')) return;
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
         }
 
         btnSaveMeasurements.addEventListener('click', function() {
@@ -985,20 +1004,29 @@
             // ✅ Build print payload using real job_no (already known in edit mode)
             const printPayload = buildPrintPayloadFromRow(currentRow, modalFormArea, templateId);
 
-            bootstrap.Modal.getInstance(measurementModalEl).hide();
+            // Open the print prompt only AFTER the Bootstrap modal has fully closed,
+            // otherwise the two overlays fight over focus/backdrop and the page can freeze.
+            measurementModalEl.addEventListener('hidden.bs.modal', function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Measurements Saved',
+                    text: 'Do you want to print the measurement receipt?',
+                    showCancelButton: true,
+                    confirmButtonText: 'Print',
+                    cancelButtonText: 'Not now',
+                    returnFocus: false,
+                    // no close animation: the overlay is removed instantly, so it can't
+                    // linger invisibly over the page and block clicks
+                    hideClass: { popup: '' }
+                }).then(result => {
+                    cleanupModalLeftovers();
+                    if (result.isConfirmed) {
+                        printMeasurementReceipt(printPayload);
+                    }
+                });
+            }, { once: true });
 
-            Swal.fire({
-                icon: 'success',
-                title: 'Measurements Saved',
-                text: 'Do you want to print the measurement receipt?',
-                showCancelButton: true,
-                confirmButtonText: 'Print',
-                cancelButtonText: 'Not now'
-            }).then(result => {
-                if (result.isConfirmed) {
-                    printMeasurementReceipt(printPayload);
-                }
-            });
+            bootstrap.Modal.getOrCreateInstance(measurementModalEl).hide();
         });
 
         function buildPrintPayloadFromRow(row, modalFormArea, templateId) {

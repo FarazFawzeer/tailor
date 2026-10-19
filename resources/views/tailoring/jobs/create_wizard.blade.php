@@ -897,7 +897,7 @@
             enableDiagramSwitching(frontImg, backImg);
             enableFieldHighlightingOnce();
 
-            const modal = new bootstrap.Modal(measurementModalEl);
+            const modal = bootstrap.Modal.getOrCreateInstance(measurementModalEl);
             modal.show();
         }
 
@@ -1390,6 +1390,15 @@
             };
         }
 
+        // Remove any backdrop / scroll-lock left behind after closing modal + popup
+        function cleanupModalLeftovers() {
+            if (document.querySelector('.modal.show')) return;
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        }
+
         // ✅ save measurements into hidden inputs (REAL submit values) + offer to print
         btnSaveMeasurements.addEventListener('click', function() {
             if (!currentRow) return;
@@ -1423,20 +1432,29 @@
             // build payload BEFORE hiding modal (field labels read from live DOM)
             const printPayload = buildPrintPayloadFromRow(currentRow, modalFormArea, templateId);
 
-            bootstrap.Modal.getInstance(measurementModalEl).hide();
+            // Open the print prompt only AFTER the Bootstrap modal has fully closed,
+            // otherwise the two overlays fight over focus/backdrop and the page can freeze.
+            measurementModalEl.addEventListener('hidden.bs.modal', function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Measurements Saved',
+                    text: 'Do you want to print the measurement receipt now? (Job/Batch No. will show as "Pending Save" until the job is fully saved.)',
+                    showCancelButton: true,
+                    confirmButtonText: 'Print',
+                    cancelButtonText: 'Not now',
+                    returnFocus: false,
+                    // no close animation: the overlay is removed instantly, so it can't
+                    // linger invisibly over the page and block clicks
+                    hideClass: { popup: '' }
+                }).then(result => {
+                    cleanupModalLeftovers();
+                    if (result.isConfirmed) {
+                        printMeasurementReceipt(printPayload);
+                    }
+                });
+            }, { once: true });
 
-            Swal.fire({
-                icon: 'success',
-                title: 'Measurements Saved',
-                text: 'Do you want to print the measurement receipt now? (Job/Batch No. will show as "Pending Save" until the job is fully saved.)',
-                showCancelButton: true,
-                confirmButtonText: 'Print',
-                cancelButtonText: 'Not now'
-            }).then(result => {
-                if (result.isConfirmed) {
-                    printMeasurementReceipt(printPayload);
-                }
-            });
+            bootstrap.Modal.getOrCreateInstance(measurementModalEl).hide();
         });
 
         // ===== Events =====

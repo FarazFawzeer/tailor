@@ -36,6 +36,12 @@ class UserController extends Controller
             'password'   => 'required|string|min:6|confirmed',
             'type'       => 'required|string|max:50',
             'image_path' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+        ], [
+            'email.unique'   => 'This user name is already taken. Please choose a different user name.',
+            'email.required' => 'The user name field is required.',
+        ], [
+            'name'  => 'full name',
+            'email' => 'user name',
         ]);
 
         if ($validator->fails()) {
