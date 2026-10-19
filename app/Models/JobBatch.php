@@ -31,8 +31,12 @@ class JobBatch extends Model
 
     public static function nextBatchNo(int $jobId): string
     {
-        $count = JobBatch::where('job_id', $jobId)->count();
-        $next = $count + 1;
+        // Use highest existing number (count would repeat numbers after a batch is deleted)
+        $max = JobBatch::where('job_id', $jobId)
+            ->pluck('batch_no')
+            ->map(fn($no) => (int)preg_replace('/\D/', '', (string)$no))
+            ->max();
+        $next = ((int)$max) + 1;
         return 'BATCH-' . str_pad((string)$next, 3, '0', STR_PAD_LEFT);
     }
 

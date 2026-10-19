@@ -25,10 +25,12 @@ class HandoverController extends Controller
             'stage'
         ])
         ->when($q, function ($query) use ($q) {
-            $query->whereHas('jobBatch.job', function ($qq) use ($q) {
-                $qq->where('job_no', 'like', "%{$q}%");
-            })->orWhereHas('jobBatch', function ($qq) use ($q) {
-                $qq->where('batch_no', 'like', "%{$q}%");
+            $query->where(function ($w) use ($q) {
+                $w->whereHas('jobBatch.job', function ($qq) use ($q) {
+                    $qq->where('job_no', 'like', "%{$q}%");
+                })->orWhereHas('jobBatch', function ($qq) use ($q) {
+                    $qq->where('batch_no', 'like', "%{$q}%");
+                });
             });
         });
 
@@ -174,6 +176,7 @@ class HandoverController extends Controller
                 'qty' => $handoverQty,
                 'current_stage_id' => $next->id,
                 'per_piece_measurement' => $item->per_piece_measurement,
+                'assigned_cutter_id' => $item->assigned_cutter_id,
                 'notes' => $item->notes,
                 'unit_price' => $item->unit_price ?? 0,
                 'line_total' => ($item->unit_price ?? 0) * $handoverQty,
@@ -322,32 +325,31 @@ public function complete(Request $request, JobBatchItem $item)
             return response()->json(['success' => false, 'message' => 'No next stage found for selected From Stage.'], 422);
         }
 
-        // Fetch rows ONLY in selected from stage
-        $stageRows = JobBatchItem::query()
-            ->where(function ($q) use ($groupId) {
-                $q->where('id', $groupId)->orWhere('parent_item_id', $groupId);
-            })
-            ->whereNull('completed_at')
-            ->where('current_stage_id', $fromStage->id)
-            ->orderBy('id') // FIFO
-            ->lockForUpdate()
-            ->get();
-
-        if ($stageRows->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'No qty available in selected stage.'], 422);
-        }
-
-        $available = $stageRows->sum('qty');
         $moveQty = (int)$data['qty'];
 
-        if ($moveQty > $available) {
-            return response()->json([
-                'success' => false,
-                'message' => "Only {$available} qty available in {$fromStage->name} stage."
-            ], 422);
-        }
+        // Lock + move inside one transaction so concurrent handovers can't double-move qty
+        $error = DB::transaction(function () use ($groupId, $fromStage, $next, $data, $moveQty) {
 
-        DB::transaction(function () use ($stageRows, $fromStage, $next, $data, $moveQty, $groupId) {
+            // Fetch rows ONLY in selected from stage
+            $stageRows = JobBatchItem::query()
+                ->where(function ($q) use ($groupId) {
+                    $q->where('id', $groupId)->orWhere('parent_item_id', $groupId);
+                })
+                ->whereNull('completed_at')
+                ->where('current_stage_id', $fromStage->id)
+                ->orderBy('id') // FIFO
+                ->lockForUpdate()
+                ->get();
+
+            if ($stageRows->isEmpty()) {
+                return 'No qty available in selected stage.';
+            }
+
+            $available = $stageRows->sum('qty');
+
+            if ($moveQty > $available) {
+                return "Only {$available} qty available in {$fromStage->name} stage.";
+            }
 
             $remainingToMove = $moveQty;
 
@@ -390,6 +392,7 @@ public function complete(Request $request, JobBatchItem $item)
                         'qty' => $take,
                         'current_stage_id' => $next->id,
                         'per_piece_measurement' => $row->per_piece_measurement,
+                        'assigned_cutter_id' => $row->assigned_cutter_id,
                         'notes' => $row->notes,
                         'unit_price' => $row->unit_price ?? 0,
                         'line_total' => ($row->unit_price ?? 0) * $take,
@@ -411,7 +414,13 @@ public function complete(Request $request, JobBatchItem $item)
 
                 $remainingToMove -= $take;
             }
+
+            return null;
         });
+
+        if ($error) {
+            return response()->json(['success' => false, 'message' => $error], 422);
+        }
 
         return response()->json(['success' => true, 'message' => "Handover saved. Moved {$moveQty} from {$fromStage->name} → {$next->name}."]);
     }

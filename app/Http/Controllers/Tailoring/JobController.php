@@ -55,9 +55,13 @@ class JobController extends Controller
                     ->whereColumn('job_batches.job_id', 'jobs.id'),
             ])
             ->when($q, function ($query) use ($q) {
-                $query->where('job_no', 'like', "%{$q}%")
-                    ->orWhereHas('customer', fn($c) => $c->where('full_name', 'like', "%{$q}%")
-                        ->orWhere('phone', 'like', "%{$q}%"));
+                $query->where(function ($w) use ($q) {
+                    $w->where('job_no', 'like', "%{$q}%")
+                        ->orWhereHas('customer', fn($c) => $c->where(function ($cc) use ($q) {
+                            $cc->where('full_name', 'like', "%{$q}%")
+                                ->orWhere('phone', 'like', "%{$q}%");
+                        }));
+                });
             })
             ->latest()
             ->paginate(10)
@@ -268,7 +272,7 @@ class JobController extends Controller
                         'qty'                     => (int)$it['qty'],
                         'per_piece_measurement'   => (bool)($it['per_piece_measurement'] ?? false),
                         'notes'                   => $it['notes'] ?? null,
-                        'current_stage_id'        => 1,
+                        'current_stage_id'        => $firstStage?->id,
 
                         'assigned_cutter_id'      => $it['assigned_cutter_id'],
 
@@ -395,7 +399,9 @@ class JobController extends Controller
             'batches.*.items.*.notes_map'    => ['nullable', 'array'],
         ]);
 
-        DB::transaction(function () use ($job, $data) {
+        $firstStage = WorkflowStage::where('is_active', true)->orderBy('sort_order')->first();
+
+        DB::transaction(function () use ($job, $data, $firstStage) {
 
             // ✅ Update Job
             $job->update([
@@ -470,7 +476,7 @@ class JobController extends Controller
                                 'qty'                     => (int)$it['qty'],
                                 'per_piece_measurement'   => $perPiece,
                                 'notes'                   => $it['notes'] ?? null,
-                                'current_stage_id'        => 1,
+                                // keep current_stage_id: editing must not reset production progress
 
                                 'assigned_cutter_id'      => $it['assigned_cutter_id'],
 
@@ -488,7 +494,7 @@ class JobController extends Controller
                             'qty'                     => (int)$it['qty'],
                             'per_piece_measurement'   => $perPiece,
                             'notes'                   => $it['notes'] ?? null,
-                            'current_stage_id'        => 1,
+                            'current_stage_id'        => $firstStage?->id,
                             'assigned_cutter_id'      => $it['assigned_cutter_id'],
 
                             // ✅ price
@@ -691,7 +697,7 @@ class JobController extends Controller
         }
 
         $subTotal = collect($lines)->sum('line_total');
-        $discount = 0; // if you add discount later
+        $discount = $job->effectiveDiscount();
         $grandTotal = max(0, $subTotal - $discount);
 
         // Invoice meta
@@ -767,7 +773,7 @@ class JobController extends Controller
         }
 
         $subTotal = collect($lines)->sum('line_total');
-        $discount = (float)($job->discount ?? 0);
+        $discount = $job->effectiveDiscount();
         $grandTotal = max(0, $subTotal - $discount);
 
         return [

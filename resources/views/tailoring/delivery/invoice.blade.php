@@ -97,7 +97,7 @@
                                 <div class="mb-3">
                                     <label class="form-label">Discount</label>
                                     <input type="number" step="0.01" min="0" class="form-control" name="discount"
-                                        value="{{ (float)($job->delivery?->discount ?? 0) }}">
+                                        value="{{ $job->effectiveDiscount() }}">
                                 </div>
 
                                 <div class="mb-3">

@@ -29,10 +29,10 @@ Route::get('/role-test', function () {
     return auth()->user()?->getRoleNames();
 })->middleware(['auth', 'role:super_admin']);
 
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     //admin
-    Route::resource('users', UserController::class);
+    Route::resource('users', UserController::class)->middleware('role:super_admin|admin');
 
 
     //profile
@@ -149,12 +149,15 @@ Route::middleware(['auth'])->prefix('tailoring')->name('tailoring.')->group(func
 });
 
 Route::delete('/tailoring/jobs/{job}', [JobController::class, 'destroy'])
+    ->middleware(['auth', 'role:super_admin|admin|front_desk'])
     ->name('tailoring.jobs.destroy');
 
 Route::get('tailoring/jobs/{job}/invoice', [JobController::class, 'invoicePdf'])
+    ->middleware('auth')
     ->name('tailoring.jobs.invoicePdf');
 // small helper api: get template fields
 Route::get('measurement-templates/{template}/fields', [MeasurementTemplateController::class, 'fieldsJson'])
+    ->middleware('auth')
     ->name('measurement-templates.fields.json');
 
 Route::middleware(['auth', 'role:super_admin|admin|front_desk'])->prefix('hiring')->group(function () {

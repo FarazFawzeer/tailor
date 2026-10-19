@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\DB;
 class WorkQueueController extends Controller
 {
     private array $roleStageMap = [
-        'cutter' => 'cut',
-        'sewing' => 'sewing',
-        'button' => 'button',
-        'ironing' => 'ironing',
-        'packaging' => 'packaging',
+        'cutter' => 'CUT',
+        'sewing' => 'SEWING',
+        'button' => 'BUTTON',
+        'ironing' => 'IRONING',
+        'packaging' => 'PACKAGING',
     ];
 
     public function index(Request $request)
@@ -43,12 +43,19 @@ class WorkQueueController extends Controller
             }
 
             if (!$stageCode) {
-                $items = collect();
+                $items = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
                 return view('tailoring.work_queue.index', compact('items', 'q', 'stages', 'selectedStageId', 'canViewAll'));
             }
 
-            $forcedStage = $stages->firstWhere('code', $stageCode);
-            $selectedStageId = $forcedStage?->id;
+            $forcedStage = $stages->first(fn($s) => strtoupper((string)$s->code) === $stageCode);
+
+            // Stage missing/inactive -> show nothing rather than every stage
+            if (!$forcedStage) {
+                $items = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+                return view('tailoring.work_queue.index', compact('items', 'q', 'stages', 'selectedStageId', 'canViewAll'));
+            }
+
+            $selectedStageId = $forcedStage->id;
         } else {
             $selectedStageId = $selectedStageId ?: null;
         }

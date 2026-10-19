@@ -184,7 +184,7 @@ Swal.fire({
             @method('DELETE')
 
             <button type="button" class="btn btn-outline-danger btn-sm w-100 btnDelete">
-                Deletess
+                Delete
             </button>
         </form>
 

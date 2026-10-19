@@ -17,10 +17,12 @@ class DeliveryController extends Controller
         $jobs = Job::query()
             ->with(['customer', 'delivery'])
             ->when($q, function ($query) use ($q) {
-                $query->where('job_no', 'like', "%{$q}%")
-                    ->orWhereHas('customer', function ($qq) use ($q) {
-                        $qq->where('full_name', 'like', "%{$q}%");
-                    });
+                $query->where(function ($w) use ($q) {
+                    $w->where('job_no', 'like', "%{$q}%")
+                        ->orWhereHas('customer', function ($qq) use ($q) {
+                            $qq->where('full_name', 'like', "%{$q}%");
+                        });
+                });
             })
             ->latest()
             ->paginate(15)
@@ -46,7 +48,7 @@ class DeliveryController extends Controller
         }
 
         $subTotal = (float)$items->sum('line_total');
-        $discount = (float)($job->delivery?->discount ?? 0);
+        $discount = $job->effectiveDiscount();
         $grandTotal = max(0, $subTotal - $discount);
 
         return view('tailoring.delivery.invoice', compact('job', 'items', 'subTotal', 'discount', 'grandTotal'));
@@ -59,8 +61,18 @@ class DeliveryController extends Controller
             'unit_price' => ['required', 'array'],
         ]);
 
-        DB::transaction(function () use ($data) {
+        $jobItemIds = DB::table('job_batch_items')
+            ->join('job_batches', 'job_batches.id', '=', 'job_batch_items.job_batch_id')
+            ->where('job_batches.job_id', $job->id)
+            ->pluck('job_batch_items.id')
+            ->all();
+
+        DB::transaction(function () use ($data, $jobItemIds) {
             foreach ($data['unit_price'] as $itemId => $price) {
+                if (!in_array((int)$itemId, $jobItemIds, true)) {
+                    continue; // ignore items that don't belong to this job
+                }
+
                 DB::table('job_batch_items')
                     ->where('id', $itemId)
                     ->update([
@@ -87,8 +99,11 @@ class DeliveryController extends Controller
         // totals
         $items = $job->batches->flatMap(fn($b) => $b->items);
         $subTotal = (float)$items->sum('line_total');
-        $discount = (float)($data['discount'] ?? 0);
+        $discount = (float)($data['discount'] ?? $job->discount ?? 0);
         $grandTotal = max(0, $subTotal - $discount);
+
+        // keep job discount in sync so bill/invoice/delivery all agree
+        $job->update(['discount' => $discount]);
 
         Delivery::updateOrCreate(
             ['job_id' => $job->id],
@@ -112,7 +127,7 @@ class DeliveryController extends Controller
         $items = $job->batches->flatMap(fn($b) => $b->items);
 
         $subTotal = (float)$items->sum('line_total');
-        $discount = (float)($job->delivery?->discount ?? 0);
+        $discount = $job->effectiveDiscount();
         $grandTotal = max(0, $subTotal - $discount);
 
         return view('tailoring.delivery.print', compact('job', 'items', 'subTotal', 'discount', 'grandTotal'));
