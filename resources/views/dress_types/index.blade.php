@@ -10,7 +10,9 @@
                 <p class="card-subtitle">All dress types with diagrams and status.</p>
             </div>
 
+            @can('dress_types.create')
             <a href="{{ route('dress-types.create') }}" class="btn btn-primary">+ Create</a>
+            @endcan
         </div>
 
         <div class="card-body">
@@ -90,14 +92,18 @@
 
                                 <td>
                                     <div class="d-flex gap-2">
+                                        @can('dress_types.edit')
                                         <a href="{{ route('dress-types.edit', $dt) }}" class="btn btn-info btn-sm w-100">
                                             Edit
                                         </a>
+                                        @endcan
 
+                                        @can('dress_types.delete')
                                         <button type="button" class="btn btn-danger btn-sm w-100 delete-dressType"
                                             data-id="{{ $dt->id }}">
                                             Delete
                                         </button>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

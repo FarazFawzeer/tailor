@@ -157,10 +157,12 @@
 
                                                         <td>
                                                             <div class="d-flex flex-wrap gap-2">
+                                                                @can('handover.create')
                                                                 <a href="{{ route('tailoring.handover.group.create', $groupKey) }}"
                                                                     class="btn btn-primary btn-sm">
                                                                     Group Handover
                                                                 </a>
+                                                                @endcan
 
                                                                 <a href="{{ route('tailoring.handover.history', $it) }}"
                                                                     class="btn btn-outline-dark btn-sm">
@@ -168,10 +170,12 @@
                                                                 </a>
 
                                                                 @if(!$it->completed_at)
+                                                                    @can('handover.create')
                                                                     <a href="{{ route('tailoring.handover.create', $it) }}"
                                                                         class="btn btn-outline-primary btn-sm">
                                                                         Single
                                                                     </a>
+                                                                    @endcan
                                                                 @else
                                                                     <button class="btn btn-secondary btn-sm" disabled>Single</button>
                                                                 @endif

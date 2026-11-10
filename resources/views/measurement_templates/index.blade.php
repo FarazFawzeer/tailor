@@ -9,7 +9,9 @@
                 <h5 class="card-title mb-0">Measurement Templates</h5>
                 <p class="card-subtitle">Templates for each dress type (fields inside template).</p>
             </div>
+            @can('measurement_templates.create')
             <a href="{{ route('measurement-templates.create') }}" class="btn btn-primary">+ Add Template</a>
+            @endcan
         </div>
 
         <div class="card-body">
@@ -52,10 +54,14 @@
                                 <td>{{ $t->updated_at->format('d M Y, h:i A') }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
+                                        @can('measurement_templates.edit')
                                         <a class="btn btn-warning btn-sm w-100"
                                             href="{{ route('measurement-templates.edit', $t) }}">Edit</a>
+                                        @endcan
+                                        @can('measurement_templates.delete')
                                         <button class="btn btn-danger btn-sm w-100 delete-template"
                                             data-id="{{ $t->id }}">Delete</button>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

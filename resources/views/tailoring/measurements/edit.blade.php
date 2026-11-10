@@ -207,7 +207,9 @@ $backImg  = $item->dressType?->diagram_back  ? asset($item->dressType->diagram_b
 
                         <div class="d-flex justify-content-end gap-2">
                             <a href="{{ route('tailoring.jobs.show', $job) }}" class="btn btn-secondary">Back</a>
-                            <button class="btn btn-primary" type="submit">Save Measurements</button>
+                            @can('measurements.edit')
+                                <button class="btn btn-primary" type="submit">Save Measurements</button>
+                            @endcan
                         </div>
 
                     </div>

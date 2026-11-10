@@ -10,9 +10,11 @@
                 <p class="card-subtitle">All customers in your system with details.</p>
             </div>
 
+            @can('customers.create')
             <a href="{{ route('customers.create') }}" class="btn btn-primary">
                 + Add Customer
             </a>
+            @endcan
         </div>
 
         <div class="card-body">
@@ -56,14 +58,18 @@
                                 <td>{{ optional($c->updated_at)->format('d M Y, h:i A') }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
+                                        @can('customers.edit')
                                         <a href="{{ route('customers.edit', $c) }}"
                                             class="btn btn-warning btn-sm w-100">Edit</a>
+                                        @endcan
 
+                                        @can('customers.delete')
                                         <button type="button"
                                             class="btn btn-danger btn-sm w-100 delete-customer"
                                             data-id="{{ $c->id }}">
                                             Delete
                                         </button>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

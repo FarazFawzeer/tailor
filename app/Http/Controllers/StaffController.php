@@ -11,8 +11,13 @@ class StaffController extends Controller
 {
     private function staffRoles(): array
     {
-        // Only staff roles (not admin/super_admin)
-        return ['front_desk', 'cutter', 'sewing', 'button', 'ironing', 'packaging'];
+        // Staff roles = every role except admin/super_admin (those are managed under Admin > Users),
+        // so roles created on the Roles & Permissions screen show up here too
+        return \Spatie\Permission\Models\Role::query()
+            ->whereNotIn('name', [\App\Support\Permissions::SUPER_ADMIN, 'admin'])
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
     }
 
     // "User Name" is stored in users.email, so show user-friendly validation text

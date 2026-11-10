@@ -83,10 +83,12 @@
                                 <td>
                                     <div class="d-flex gap-2">
                                         {{-- Group Handover (recommended) --}}
+                                        @can('handover.create')
                                         <a href="{{ route('tailoring.handover.group.create', $it->group_id) }}"
                                            class="btn btn-primary btn-sm w-100">
                                             Group Handover
                                         </a>
+                                        @endcan
 
                                         {{-- Optional: open old item-level list by filtering handover page --}}
                                         <a href="{{ route('tailoring.handover.index', ['q' => $it->job_no]) }}"

@@ -36,9 +36,11 @@
             </div>
 
             <div class="d-flex gap-2">
+                @can('hire_items.create')
                 <a href="{{ route('hiring.items.create') }}" class="btn btn-primary btn-icon">
                     <i class="ti ti-plus"></i> Create
                 </a>
+                @endcan
             </div>
         </div>
 
@@ -173,17 +175,21 @@
                                     </a>
 
                                     {{-- EDIT --}}
+                                    @can('hire_items.edit')
                                     <a href="{{ route('hiring.items.edit', $it->id) }}"
                                        class="btn btn-outline-dark btn-sm w-100 btn-icon">
                                         <i class="ti ti-edit"></i> Edit
                                     </a>
+                                    @endcan
 
                                     {{-- DELETE --}}
+                                    @can('hire_items.delete')
                                     <button type="button"
                                             class="btn btn-danger btn-sm w-100 btn-delete btn-icon"
                                             data-id="{{ $it->id }}">
                                         <i class="ti ti-trash"></i> Delete
                                     </button>
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

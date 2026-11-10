@@ -24,9 +24,11 @@
                 </div>
 
                 <div class="d-flex gap-2">
+                    @can('jobs.create')
                     <a href="{{ route('tailoring.jobs.createWizard') }}" class="btn btn-primary">
                         + Create Job
                     </a>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -174,11 +176,14 @@ Swal.fire({
             View
         </a>
 
+        @can('jobs.edit')
         <a class="btn btn-primary btn-sm w-100"
            href="{{ route('tailoring.jobs.editWizard', $j) }}">
             Edit
         </a>
+        @endcan
 
+        @can('jobs.delete')
         <form action="{{ route('tailoring.jobs.destroy', $j) }}" method="POST" class="delete-form w-100">
             @csrf
             @method('DELETE')
@@ -187,6 +192,7 @@ Swal.fire({
                 Delete
             </button>
         </form>
+        @endcan
 
     </div>
 </td>

@@ -22,7 +22,7 @@ class WorkQueueController extends Controller
         $q = trim((string)$request->get('q'));
         $user = $request->user();
 
-        $canViewAll = $user->hasAnyRole(['super_admin', 'admin', 'front_desk']);
+        $canViewAll = $user->can('workqueue.all_stages');
 
         $stages = WorkflowStage::query()
             ->where('is_active', 1)

@@ -108,9 +108,11 @@
                     @endif
 
                     {{-- Complete button --}}
+                    @can('handover.complete')
                     <button type="button" class="btn btn-success" id="btnComplete">
                         Mark Completed
                     </button>
+                    @endcan
                 </div>
             </form>
         </div>
@@ -148,7 +150,7 @@
         });
 
         // Complete
-        document.getElementById('btnComplete').addEventListener('click', function() {
+        document.getElementById('btnComplete')?.addEventListener('click', function() {
             Swal.fire({
                 title: 'Mark as Completed?',
                 text: "This will complete the item in the current stage.",

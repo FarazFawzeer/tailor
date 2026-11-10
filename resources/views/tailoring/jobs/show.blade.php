@@ -88,7 +88,9 @@
    
             <a href="{{ route('tailoring.jobs.index') }}" class="btn btn-outline-secondary btn-sm" style="width: 100px;">Back</a>
       
+                @can('jobs.edit')
                 <a href="{{ route('tailoring.jobs.editWizard', $job) }}" class="btn btn-outline-primary btn-sm" style="width: 100px;">Edit </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -244,14 +246,18 @@
                     </div>
 
                     <div class="d-flex gap-2 flex-wrap">
+                        @can('handover.create')
                         <a href="{{ route('tailoring.handover.group.create', $g['group_id']) }}" class="btn btn-primary btn-sm" style="width: 150px">
                             Group Handover
                         </a>
+                        @endcan
 
                         @if(!empty($g['history_item_id']))
+                            @can('handover.view')
                             <a href="{{ route('tailoring.handover.history', $g['history_item_id']) }}" class="btn btn-outline-dark btn-sm" style="width: 150px">
                                 History
                             </a>
+                            @endcan
                         @endif
                     </div>
                 </div>
@@ -355,15 +361,19 @@
                                         <td class="text-muted">{{ $row->notes ?? '-' }}</td>
                                         <td>
                                             <div class="d-flex gap-2 flex-wrap">
+                                                @can('handover.create')
                                                 <a class="btn btn-outline-primary btn-sm w-100 {{ $row->completed_at ? 'disabled' : '' }}"
                                                    href="{{ $row->completed_at ? '#' : route('tailoring.handover.create', $row) }}" style="width: 150px;">
                                                     Single Handover
                                                 </a>
+                                                @endcan
 
+                                                @can('measurements.view')
                                                 <a class="btn btn-outline-dark btn-sm w-100"
                                                    href="{{ route('tailoring.measurements.edit', [$job, $row->jobBatch, $row]) }}"  style="width: 150px;">
                                                     Measurements
                                                 </a>
+                                                @endcan
 
                                                 @if($printPayloadRow)
                                                     <button type="button"
@@ -513,10 +523,12 @@
                                                 </button>
                                             @endif
 
+                                            @can('measurements.view')
                                             <a class="btn btn-outline-dark btn-sm"
                                                 href="{{ route('tailoring.measurements.edit', [$job, $batch, $it]) }}">
                                                 Open Measurements 
                                             </a>
+                                            @endcan
 
                                             @if($payload)
                                                 <button type="button"

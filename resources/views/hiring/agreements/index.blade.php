@@ -32,9 +32,11 @@
                 </div>
             </div>
 
+            @can('hire_agreements.create')
             <a href="{{ route('hiring.agreements.create') }}" class="btn btn-primary btn-icon">
                 <i class="ti ti-plus"></i> Create
             </a>
+            @endcan
         </div>
 
         <div class="card-body">
@@ -121,6 +123,7 @@
                                         <i class="ti ti-eye"></i> View
                                     </a>
 
+                                    @can('hire_agreements.edit')
                                     {{-- Edit (only if not returned) --}}
                                     @if($a->status !== 'returned')
                                         <a href="{{ route('hiring.agreements.edit', $a->id) }}"
@@ -132,7 +135,9 @@
                                             <i class="ti ti-edit"></i> Edit
                                         </button>
                                     @endif
+                                    @endcan
 
+                                    @can('hire_agreements.delete')
                                     {{-- Delete (only if cancelled OR issued, you can adjust rule) --}}
                                     @if($a->status !== 'returned')
                                         <button type="button"
@@ -145,6 +150,7 @@
                                             <i class="ti ti-trash"></i> Delete
                                         </button>
                                     @endif
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

@@ -9,7 +9,9 @@
                 <h5 class="card-title mb-0">Workflow Stages</h5>
                 <p class="card-subtitle">Manage stage order (Cut → Sewing → Button → Ironing → Packaging).</p>
             </div>
+            @can('workflow_stages.create')
             <a href="{{ route('workflow-stages.create') }}" class="btn btn-primary">+ Add</a>
+            @endcan
         </div>
 
         <div class="card-body">
@@ -55,10 +57,14 @@
                                 <td>{{ $s->updated_at->format('d M Y, h:i A') }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
+                                        @can('workflow_stages.edit')
                                         <a class="btn btn-warning btn-sm w-100" href="{{ route('workflow-stages.edit', $s) }}">Edit</a>
+                                        @endcan
+                                        @can('workflow_stages.delete')
                                         <button type="button" class="btn btn-danger btn-sm w-100 delete-stage" data-id="{{ $s->id }}">
                                             Delete
                                         </button>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

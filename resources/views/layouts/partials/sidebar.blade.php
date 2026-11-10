@@ -12,26 +12,6 @@
         </a>
     </div>
 
-    @php
-        // =========================
-        // Section detection
-        // =========================
-        $isTailoring = request()->is('tailoring/*') || request()->routeIs('tailoring.*');
-        $isHiring = request()->is('hiring/*') || request()->routeIs('hiring.*');
-
-        $isAdminSection =
-            request()->routeIs('admin.users.*') ||
-            request()->routeIs('second') ||
-            request()->routeIs('customers.*') ||
-            request()->routeIs('staff.*') ||
-            request()->routeIs('dress-types.*') ||
-            request()->routeIs('measurement-templates.*') ||
-            request()->routeIs('workflow-stages.*');
-
-        // Expand collapses automatically when inside section
-        $expandHiring = $isHiring ? 'true' : 'false';
-        $expandTailoring = $isTailoring ? 'true' : 'false';
-    @endphp
 
     <style>
         .app-sidebar {
@@ -151,362 +131,119 @@
         }
     </style>
 
+    @php
+        // =========================
+        // Menu: each link shows only when the user has its permission
+        // [label, route name, permission(s) "a|b", active route pattern]
+        // =========================
+        $menuSections = [
+            'System Setup' => [
+                ['id' => 'sidebarUsers', 'label' => 'Users', 'icon' => 'solar:user-circle-outline', 'active' => ['admin.users.*', 'admin.roles.*'], 'links' => [
+                    // "+ Add User" is on the users list page
+                    ['View Users', 'admin.users.index', 'users.view', 'admin.users.*'],
+                    ['Roles & Permissions', 'admin.roles.index', 'roles.manage', 'admin.roles.*'],
+                ]],
+                ['id' => 'sidebarCustomer', 'label' => 'Customer', 'icon' => 'solar:user-circle-outline', 'active' => ['customers.*'], 'links' => [
+                    ['Create', 'customers.create', 'customers.create', 'customers.create'],
+                    ['View', 'customers.index', 'customers.view', 'customers.index'],
+                ]],
+                ['id' => 'sidebarStaff', 'label' => 'Staff', 'icon' => 'solar:users-group-rounded-outline', 'active' => ['staff.*'], 'links' => [
+                    ['Create', 'staff.create', 'staff.create', 'staff.create'],
+                    ['View', 'staff.index', 'staff.view', 'staff.index'],
+                ]],
+                ['id' => 'sidebarDressTypes', 'label' => 'Dress Types', 'icon' => 'solar:t-shirt-outline', 'active' => ['dress-types.*'], 'links' => [
+                    ['Create', 'dress-types.create', 'dress_types.create', 'dress-types.create'],
+                    ['View', 'dress-types.index', 'dress_types.view', 'dress-types.index'],
+                ]],
+                ['id' => 'sidebarMeasurementTemplates', 'label' => 'Measure Templates', 'icon' => 'solar:ruler-angular-outline', 'active' => ['measurement-templates.*'], 'links' => [
+                    ['Create', 'measurement-templates.create', 'measurement_templates.create', 'measurement-templates.create'],
+                    ['View', 'measurement-templates.index', 'measurement_templates.view', 'measurement-templates.index'],
+                ]],
+                ['id' => 'sidebarWorkflowStages', 'label' => 'Workflow Stages', 'icon' => 'solar:checklist-minimalistic-outline', 'active' => ['workflow-stages.*'], 'links' => [
+                    ['Create', 'workflow-stages.create', 'workflow_stages.create', 'workflow-stages.create'],
+                    ['View', 'workflow-stages.index', 'workflow_stages.view', 'workflow-stages.index'],
+                ]],
+            ],
+            'Tailoring Section' => [
+                ['id' => 'sidebarTailoring', 'label' => 'Tailoring', 'icon' => 'solar:clipboard-list-outline', 'active' => ['tailoring.*'], 'links' => [
+                    ['Create Job', 'tailoring.jobs.createWizard', 'jobs.create', 'tailoring.jobs.createWizard'],
+                    ['View Jobs', 'tailoring.jobs.index', 'jobs.view', 'tailoring.jobs.index'],
+                    ['Work Queue', 'tailoring.workqueue.index', 'workqueue.view|workqueue.all_stages', 'tailoring.workqueue.*'],
+                    ['Staff Report', 'tailoring.reports.staff', 'tailoring_reports.view', 'tailoring.reports.staff'],
+                ]],
+            ],
+            'Hiring Section' => [
+                ['id' => 'sidebarHiring', 'label' => 'Hiring', 'icon' => 'solar:bag-3-outline', 'active' => ['hiring.*'], 'links' => [
+                    ['Add Hire Item', 'hiring.items.create', 'hire_items.create', 'hiring.items.create'],
+                    ['View Hire Items', 'hiring.items.index', 'hire_items.view', 'hiring.items.index'],
+                    ['Create Agreement', 'hiring.agreements.create', 'hire_agreements.create', 'hiring.agreements.create'],
+                    ['View Agreements', 'hiring.agreements.index', 'hire_agreements.view', 'hiring.agreements.index'],
+                    ['Hiring Sales Report', 'hiring.reports.sales', 'hiring_reports.view', 'hiring.reports.sales'],
+                ]],
+            ],
+        ];
+
+        $menuUser = auth()->user();
+        $canAny = fn($perm) => collect(explode('|', $perm))->contains(fn($p) => $menuUser?->can($p));
+
+        // keep only the links (and groups / sections) this user is allowed to see
+        $visibleSections = [];
+        foreach ($menuSections as $sectionTitle => $groups) {
+            foreach ($groups as $group) {
+                $group['links'] = array_values(array_filter($group['links'], fn($l) => $canAny($l[2])));
+                if ($group['links']) {
+                    $visibleSections[$sectionTitle][] = $group;
+                }
+            }
+        }
+    @endphp
+
     <div class="scrollbar" data-simplebar>
         <ul class="navbar-nav" id="navbar-nav">
 
-            {{-- =========================
-                FIXED SECTION
-            ========================== --}}
+            @foreach ($visibleSections as $sectionTitle => $groups)
+                @if (!$loop->first)
+                    <div class="menu-divider"></div>
+                @endif
 
-            <li class="menu-title section-title">System Setup</li>
+                <li class="menu-title section-title">{{ $sectionTitle }}</li>
 
-            {{-- ADMIN (only super_admin/admin) --}}
-            @role('super_admin|admin')
-                <li class="nav-item {{ $isAdminSection ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarAdmin" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ request()->routeIs('admin.users.*') || request()->routeIs('second') ? 'true' : 'false' }}"
-                        aria-controls="sidebarAdmin">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:user-circle-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Admin</span>
-                    </a>
+                @foreach ($groups as $group)
+                    @php $groupActive = request()->routeIs(...$group['active']); @endphp
+                    <li class="nav-item {{ $groupActive ? 'section-active' : '' }}">
+                        <a class="nav-link menu-arrow" href="#{{ $group['id'] }}" data-bs-toggle="collapse" role="button"
+                            aria-expanded="{{ $groupActive ? 'true' : 'false' }}" aria-controls="{{ $group['id'] }}">
+                            <span class="nav-icon">
+                                <iconify-icon icon="{{ $group['icon'] }}"></iconify-icon>
+                            </span>
+                            <span class="nav-text"> {{ $group['label'] }}</span>
+                        </a>
 
-                    <div class="collapse {{ request()->routeIs('admin.users.*') || request()->routeIs('second') ? 'show' : '' }}"
-                        id="sidebarAdmin">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('second') ? 'active' : '' }}"
-                                    href="{{ route('second', ['admin', 'create']) }}">
-                                    Create
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('admin.users.index') ? 'active' : '' }}"
-                                    href="{{ route('admin.users.index') }}">
-                                    View
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
+                        <div class="collapse {{ $groupActive ? 'show' : '' }}" id="{{ $group['id'] }}">
+                            <ul class="nav sub-navbar-nav">
+                                @foreach ($group['links'] as $link)
+                                    <li class="sub-nav-item">
+                                        <a class="sub-nav-link {{ request()->routeIs($link[3]) ? 'active' : '' }}"
+                                            href="{{ route($link[1]) }}">
+                                            {{ $link[0] }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </li>
+                @endforeach
 
-            {{-- CUSTOMER (super_admin/admin/front_desk) --}}
-            @role('super_admin|admin|front_desk')
-                <li class="nav-item {{ request()->routeIs('customers.*') ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarCustomer" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ request()->routeIs('customers.*') ? 'true' : 'false' }}"
-                        aria-controls="sidebarCustomer">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:user-circle-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Customer</span>
-                    </a>
+                {{-- PROFILE (everyone), at the end of the first section --}}
+                @if ($loop->first)
+                    @include('layouts.partials.sidebar-profile-link')
+                @endif
+            @endforeach
 
-                    <div class="collapse {{ request()->routeIs('customers.*') ? 'show' : '' }}" id="sidebarCustomer">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('customers.create') ? 'active' : '' }}"
-                                    href="{{ route('customers.create') }}">
-                                    Create
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('customers.index') ? 'active' : '' }}"
-                                    href="{{ route('customers.index') }}">
-                                    View
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-            {{-- STAFF (only super_admin/admin) --}}
-            @role('super_admin|admin')
-                <li class="nav-item {{ request()->routeIs('staff.*') ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarStaff" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ request()->routeIs('staff.*') ? 'true' : 'false' }}"
-                        aria-controls="sidebarStaff">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:users-group-rounded-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Staff</span>
-                    </a>
-
-                    <div class="collapse {{ request()->routeIs('staff.*') ? 'show' : '' }}" id="sidebarStaff">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('staff.create') ? 'active' : '' }}"
-                                    href="{{ route('staff.create') }}">
-                                    Create
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('staff.index') ? 'active' : '' }}"
-                                    href="{{ route('staff.index') }}">
-                                    View
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-            {{-- DRESS TYPES (only super_admin/admin) --}}
-            @role('super_admin|admin')
-                <li class="nav-item {{ request()->routeIs('dress-types.*') ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarDressTypes" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ request()->routeIs('dress-types.*') ? 'true' : 'false' }}"
-                        aria-controls="sidebarDressTypes">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:t-shirt-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Dress Types</span>
-                    </a>
-
-                    <div class="collapse {{ request()->routeIs('dress-types.*') ? 'show' : '' }}" id="sidebarDressTypes">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('dress-types.create') ? 'active' : '' }}"
-                                    href="{{ route('dress-types.create') }}">
-                                    Create
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('dress-types.index') ? 'active' : '' }}"
-                                    href="{{ route('dress-types.index') }}">
-                                    View
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-            @role('super_admin|admin')
-                <li class="nav-item {{ request()->routeIs('measurement-templates.*') ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarMeasurementTemplates" data-bs-toggle="collapse"
-                        role="button"
-                        aria-expanded="{{ request()->routeIs('measurement-templates.*') ? 'true' : 'false' }}"
-                        aria-controls="sidebarMeasurementTemplates">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:ruler-angular-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Measure Templates</span>
-                    </a>
-
-                    <div class="collapse {{ request()->routeIs('measurement-templates.*') ? 'show' : '' }}"
-                        id="sidebarMeasurementTemplates">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('measurement-templates.create') ? 'active' : '' }}"
-                                    href="{{ route('measurement-templates.create') }}">
-                                    Create
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('measurement-templates.index') ? 'active' : '' }}"
-                                    href="{{ route('measurement-templates.index') }}">
-                                    View
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-            @role('super_admin|admin')
-                <li class="nav-item {{ request()->routeIs('workflow-stages.*') ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarWorkflowStages" data-bs-toggle="collapse"
-                        role="button" aria-expanded="{{ request()->routeIs('workflow-stages.*') ? 'true' : 'false' }}"
-                        aria-controls="sidebarWorkflowStages">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:checklist-minimalistic-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Workflow Stages</span>
-                    </a>
-
-                    <div class="collapse {{ request()->routeIs('workflow-stages.*') ? 'show' : '' }}"
-                        id="sidebarWorkflowStages">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('workflow-stages.create') ? 'active' : '' }}"
-                                    href="{{ route('workflow-stages.create') }}">
-                                    Create
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('workflow-stages.index') ? 'active' : '' }}"
-                                    href="{{ route('workflow-stages.index') }}">
-                                    View
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-            {{-- PROFILE (everyone) --}}
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.profile.edit') ? 'active' : '' }}"
-                    href="{{ route('admin.profile.edit') }}">
-                    <span class="nav-icon">
-                        {{-- ✅ changed icon to a better "profile/settings" type --}}
-                        <iconify-icon icon="solar:settings-outline"></iconify-icon>
-                    </span>
-                    <span class="nav-text"> Profile </span>
-                </a>
-            </li>
-
-
-            <div class="menu-divider"></div>
-
-            {{-- =========================
-                TAILORING SECTION
-            ========================== --}}
-            <li class="menu-title section-title">Tailoring Section</li>
-
-            @role('super_admin|admin|front_desk')
-                <li class="nav-item {{ $isTailoring ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarTailoring" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ $expandTailoring }}" aria-controls="sidebarTailoring">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:clipboard-list-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Tailoring</span>
-                    </a>
-
-                    <div class="collapse {{ $isTailoring ? 'show' : '' }}" id="sidebarTailoring">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('tailoring.jobs.create') ? 'active' : '' }}"
-                                    href="{{ route('tailoring.jobs.createWizard') }}">
-                                    Create Job
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('tailoring.jobs.index') ? 'active' : '' }}"
-                                    href="{{ route('tailoring.jobs.index') }}">
-                                    View Jobs
-                                </a>
-                            </li>
-                            {{-- <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('tailoring.reports.stages') ? 'active' : '' }}"
-                                    href="{{ route('tailoring.reports.stages') }}">
-                               Stage Report
-                                </a>
-                            </li> --}}
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('tailoring.reports.staff') ? 'active' : '' }}"
-                                    href="{{ route('tailoring.reports.staff') }}">
-                                    Staff Report
-                                </a>
-                            </li>
-
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-            <div class="menu-divider"></div>
-
-            {{-- =========================
-                HIRING SECTION
-            ========================== --}}
-            <li class="menu-title section-title">Hiring Section</li>
-
-            @role('super_admin|admin|front_desk')
-                <li class="nav-item {{ $isHiring ? 'section-active' : '' }}">
-                    <a class="nav-link menu-arrow" href="#sidebarHiring" data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ $expandHiring }}" aria-controls="sidebarHiring">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:bag-3-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Hiring</span>
-                    </a>
-
-                    <div class="collapse {{ $isHiring ? 'show' : '' }}" id="sidebarHiring">
-                        <ul class="nav sub-navbar-nav">
-
-                            {{-- Hire Inventory --}}
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('hiring.items.create') ? 'active' : '' }}"
-                                    href="{{ route('hiring.items.create') }}">
-                                    Add Hire Item
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('hiring.items.index') ? 'active' : '' }}"
-                                    href="{{ route('hiring.items.index') }}">
-                                    View Hire Items
-                                </a>
-                            </li>
-
-                            {{-- <li><hr class="dropdown-divider my-2"></li> --}}
-
-                            {{-- Step 2 (we will implement next) --}}
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('hiring.agreements.create') ? 'active' : '' }}"
-                                    href="{{ route('hiring.agreements.create') }}">
-                                    Create Agreement
-                                </a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('hiring.agreements.index') ? 'active' : '' }}"
-                                    href="{{ route('hiring.agreements.index') }}">
-                                    View Agreements
-                                </a>
-                            </li>
-
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link {{ request()->routeIs('hiring.reports.sales') ? 'active' : '' }}"
-                                    href="{{ route('hiring.reports.sales') }}">
-                                    Hiring Sales Report
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            @endrole
-
-
-
-
-            {{-- @role('super_admin|admin|front_desk|cutter|sewing|button|ironing|packaging')
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('tailoring.handover.index') }}">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:transfer-horizontal-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Handover </span>
-                    </a>
-                </li>
-            @endrole --}}
-
-
-            {{-- @role('super_admin|admin|front_desk|cutter|sewing|button|ironing|packaging')
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('tailoring.workqueue.index') }}">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:clipboard-list-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Work Queue </span>
-                    </a>
-                </li>
-            @endrole --}}
-
-            {{-- @role('super_admin|admin|front_desk')
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('tailoring.delivery.index') }}">
-                        <span class="nav-icon">
-                            <iconify-icon icon="solar:bill-list-outline"></iconify-icon>
-                        </span>
-                        <span class="nav-text"> Delivery & Invoice </span>
-                    </a>
-                </li>
-            @endrole --}}
+            {{-- a user with no other menus still gets Profile --}}
+            @if (empty($visibleSections))
+                @include('layouts.partials.sidebar-profile-link')
+            @endif
 
         </ul>
     </div>

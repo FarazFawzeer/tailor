@@ -53,7 +53,9 @@
             </div>
 
             <div class="d-flex justify-content-end mb-3">
+                @can('delivery.manage')
                 <button class="btn btn-outline-dark" id="btnSavePrices">Save Prices</button>
+                @endcan
             </div>
 
             {{-- Totals --}}
@@ -107,7 +109,9 @@
 
                                 <div class="d-flex justify-content-end gap-2">
                                     <a href="{{ route('tailoring.delivery.index') }}" class="btn btn-secondary">Back</a>
+                                    @can('delivery.manage')
                                     <button type="submit" class="btn btn-success">Mark Delivered</button>
+                                    @endcan
                                     <a href="{{ route('tailoring.delivery.print', $job) }}" target="_blank" class="btn btn-info">Print</a>
                                 </div>
                             </form>
@@ -123,7 +127,7 @@
         const msgBox = document.getElementById('message');
 
         // Save prices
-        document.getElementById('btnSavePrices').addEventListener('click', function() {
+        document.getElementById('btnSavePrices')?.addEventListener('click', function() {
             const formData = new FormData();
             document.querySelectorAll('.unit-price').forEach(inp => {
                 formData.append(inp.name, inp.value);

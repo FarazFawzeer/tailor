@@ -74,17 +74,21 @@
                 </a>
 
                 @if ($agreement->status === 'issued')
+                    @can('hire_agreements.edit')
                     <a href="{{ route('hiring.agreements.edit', $agreement->id) }}"
                        class="btn btn-outline-dark btn-icon d-flex justify-content-center align-items-center"
                        style="width:150px;">
                         <i class="ti ti-edit me-1"></i> Edit
                     </a>
+                    @endcan
 
+                    @can('hire_agreements.return')
                     <a href="{{ route('hiring.agreements.return', $agreement) }}"
                        class="btn btn-success btn-icon d-flex justify-content-center align-items-center"
                        style="width:170px;">
                         <i class="ti ti-check"></i> Return Items
                     </a>
+                    @endcan
                 @endif
 
                 <a href="{{ route('hiring.agreements.invoice', $agreement->id) }}"

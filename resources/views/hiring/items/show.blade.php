@@ -51,9 +51,11 @@
                 </div>
 
                 <div class="d-flex gap-2">
+                    @can('hire_items.edit')
                     <a href="{{ route('hiring.items.edit', $item->id) }}" class="btn btn-outline-primary">
                         <i class="ti ti-edit me-1"></i>Edit
                     </a>
+                    @endcan
                     <a href="{{ route('hiring.items.index') }}" class="btn btn-secondary">
                         Back
                     </a>
@@ -202,9 +204,11 @@
                 <h6 class="mb-0">Quick Actions</h6>
             </div>
             <div class="card-body d-flex flex-column gap-2">
+                @can('hire_items.edit')
                 <a href="{{ route('hiring.items.edit', $item->id) }}" class="btn btn-outline-primary w-100">
                     <i class="ti ti-edit me-1"></i>Edit Item
                 </a>
+                @endcan
 
                 {{-- OPTIONAL: if you have hire/reserve pages later --}}
                 {{-- <a href="#" class="btn btn-outline-success w-100">Hire Now</a> --}}

@@ -10,9 +10,11 @@
                 <p class="card-subtitle">All staff in your system with details.</p>
             </div>
 
+            @can('staff.create')
             <a href="{{ route('staff.create') }}" class="btn btn-primary">
                 + Add Staff
             </a>
+            @endcan
         </div>
 
         <div class="card-body">
@@ -64,13 +66,17 @@
                                 <td>{{ optional($u->updated_at)->format('d M Y, h:i A') }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
+                                        @can('staff.edit')
                                         <a href="{{ route('staff.edit', $u) }}" class="btn btn-warning btn-sm w-100">
                                             Edit
                                         </a>
+                                        @endcan
+                                        @can('staff.delete')
                                         <button type="button" class="btn btn-danger btn-sm w-100 delete-staff"
                                             data-id="{{ $u->id }}">
                                             Delete
                                         </button>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

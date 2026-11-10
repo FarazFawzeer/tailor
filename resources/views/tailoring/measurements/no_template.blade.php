@@ -46,9 +46,9 @@
 
             <div class="mt-3 d-flex gap-2">
                 <a href="{{ route('tailoring.jobs.show', $job) }}" class="btn btn-secondary">Back to Job</a>
-                @hasanyrole('super_admin|admin|front_desk')
+                @can('jobs.edit')
                     <a href="{{ route('tailoring.jobs.editWizard', $job) }}" class="btn btn-primary">Edit Job</a>
-                @endhasanyrole
+                @endcan
             </div>
         </div>
     </div>
