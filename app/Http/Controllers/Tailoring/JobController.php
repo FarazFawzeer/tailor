@@ -355,6 +355,13 @@ class JobController extends Controller
             }
         }
 
+        // split "Part" rows share the original order line's measurements
+        foreach ($job->batches->flatMap(fn($b) => $b->items) as $it) {
+            if ($it->parent_item_id && isset($existingMeasurements[$it->parent_item_id])) {
+                $existingMeasurements[$it->id] = $existingMeasurements[$it->parent_item_id];
+            }
+        }
+
         return view('tailoring.jobs.edit_wizard', compact(
             'job',
             'customers',
@@ -509,6 +516,15 @@ class JobController extends Controller
                     $measurements = $it['measurements'] ?? [];
                     $notesMap     = $it['notes_map'] ?? [];
 
+                    // split "Part" rows don't own measurements (they use the original line's)
+                    if ($item->parent_item_id) {
+                        continue;
+                    }
+
+                    // after a partial handover this row's qty is only the remainder,
+                    // so per-piece measurements cover the whole order line
+                    $pieceQty = $item->groupQty();
+
                     if ($templateId) {
                         $tpl = MeasurementTemplate::with(['fields' => fn($q) => $q->orderBy('sort_order')])
                             ->find($templateId);
@@ -520,7 +536,7 @@ class JobController extends Controller
                             if ($perPiece) {
                                 ItemMeasurementSet::where('job_batch_item_id', $item->id)
                                     ->whereNotNull('piece_no')
-                                    ->where('piece_no', '>', (int)$item->qty)
+                                    ->where('piece_no', '>', $pieceQty)
                                     ->delete();
                             }
 
@@ -547,9 +563,14 @@ class JobController extends Controller
                                     ->whereNotNull('piece_no')
                                     ->delete();
                             } else {
-                                for ($p = 1; $p <= (int)$item->qty; $p++) {
+                                for ($p = 1; $p <= $pieceQty; $p++) {
                                     $k = (string)$p;
                                     $values = $measurements[$k] ?? [];
+
+                                    // pieces beyond what the form showed: keep existing values
+                                    if (!isset($measurements[$k])) {
+                                        continue;
+                                    }
 
                                     $set = ItemMeasurementSet::updateOrCreate(
                                         ['job_batch_item_id' => $item->id, 'piece_no' => $p],

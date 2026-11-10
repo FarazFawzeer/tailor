@@ -85,5 +85,26 @@ class JobBatchItem extends Model
         return $this->belongsTo(\App\Models\User::class, 'assigned_cutter_id');
     }
 
+    /**
+     * Measurements belong to the original order line. Rows split off by a partial
+     * handover point to it via parent_item_id, so they read/write the root's measurements.
+     */
+    public function groupRoot(): self
+    {
+        if (!$this->parent_item_id) {
+            return $this;
+        }
+
+        return self::find($this->parent_item_id) ?? $this;
+    }
+
+    // Total pieces of the original order line (root + all split parts)
+    public function groupQty(): int
+    {
+        $root = $this->groupRoot();
+
+        return (int)$root->qty + (int)self::where('parent_item_id', $root->id)->sum('qty');
+    }
+
     
 }

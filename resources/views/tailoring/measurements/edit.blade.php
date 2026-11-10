@@ -29,7 +29,7 @@ $backImg  = $item->dressType?->diagram_back  ? asset($item->dressType->diagram_b
             <p class="card-subtitle mb-0">
                 Dress: <b>{{ $item->dressType?->name }}</b> |
                 Template: <b>{{ $item->measurementTemplate?->name }}</b> |
-                Qty: <b>{{ $item->qty }}</b> |
+                Qty: <b>{{ $item->qty }}</b>@if($pieceQty != $item->qty) <span class="text-muted">(order line total {{ $pieceQty }})</span>@endif |
                 Mode:
                 @if($item->per_piece_measurement)
                     <span class="badge bg-warning">Per Piece</span>
@@ -93,7 +93,7 @@ $backImg  = $item->dressType?->diagram_back  ? asset($item->dressType->diagram_b
                             {{-- SAME MODE --}}
                             <div class="card border mb-3">
                                 <div class="card-header">
-                                    <b>Same measurements for all pieces (Qty {{ $item->qty }})</b>
+                                    <b>Same measurements for all pieces (Qty {{ $pieceQty }})</b>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
@@ -132,7 +132,7 @@ $backImg  = $item->dressType?->diagram_back  ? asset($item->dressType->diagram_b
                         @else
                             {{-- PER PIECE MODE (TABS) --}}
                             <ul class="nav nav-tabs mb-3" id="pieceTabs" role="tablist">
-                                @for($p = 1; $p <= $item->qty; $p++)
+                                @for($p = 1; $p <= $pieceQty; $p++)
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link {{ $p === 1 ? 'active' : '' }}"
                                                 id="piece-tab-{{ $p }}"
@@ -149,7 +149,7 @@ $backImg  = $item->dressType?->diagram_back  ? asset($item->dressType->diagram_b
                             </ul>
 
                             <div class="tab-content" id="pieceTabContent">
-                                @for($p = 1; $p <= $item->qty; $p++)
+                                @for($p = 1; $p <= $pieceQty; $p++)
                                     @php
                                         $pieceKey = (string)$p;
                                     @endphp

@@ -290,7 +290,11 @@
                                         if ($row->measurementTemplate) {
                                             $piecesForPrint = [];
                                             $fieldsList = $row->measurementTemplate->fields ?? collect();
-                                            $setsForRow = $row->measurementSets ?? collect();
+                                            // split "Part" rows use the original order line's measurements
+                                            $measureRow = $row->parent_item_id
+                                                ? ($g['items']->firstWhere('id', $row->parent_item_id) ?? $row->groupRoot())
+                                                : $row;
+                                            $setsForRow = $measureRow->measurementSets ?? collect();
 
                                             foreach ($setsForRow as $set) {
                                                 $pieceTitle = $set->piece_no === null ? 'All Pieces (Same)' : "Piece {$set->piece_no}";

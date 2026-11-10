@@ -22,15 +22,36 @@ class MeasurementEntryController extends Controller
             $q->orderBy('sort_order');
         }]);
 
-        if (!$item->measurementTemplate) {
-            return view('tailoring.measurements.no_template', compact('job', 'batch', 'item'));
-        }
+        // split "Part" rows share the measurements of the original order line
+        $source = $item->groupRoot();
+        $pieceQty = $item->groupQty();
 
         // Existing saved sets + values
         $sets = ItemMeasurementSet::query()
-            ->where('job_batch_item_id', $item->id)
-            ->with(['values'])
+            ->where('job_batch_item_id', $source->id)
+            ->with(['values.field'])
             ->get();
+
+        if (!$item->measurementTemplate) {
+            // Old orders saved without a template: show any values that do exist (read-only)
+            $savedRows = [];
+            foreach ($sets as $set) {
+                $vals = $set->values->filter(fn($v) => $v->value !== null && $v->value !== '');
+                if ($vals->isEmpty() && !$set->notes) continue;
+
+                $savedRows[] = [
+                    'title' => $set->piece_no === null ? 'All Pieces (Same)' : "Piece {$set->piece_no}",
+                    'values' => $vals->map(fn($v) => [
+                        'label' => $v->field?->label ?? 'Field #' . $v->measurement_field_id,
+                        'unit' => $v->field?->unit,
+                        'value' => $v->value,
+                    ])->values()->all(),
+                    'notes' => $set->notes,
+                ];
+            }
+
+            return view('tailoring.measurements.no_template', compact('job', 'batch', 'item', 'savedRows'));
+        }
 
         // existing map: key => [field_id => value]
         $existing = [];
@@ -49,7 +70,7 @@ class MeasurementEntryController extends Controller
 
         $fields = $item->measurementTemplate->fields;
 
-        return view('tailoring.measurements.edit', compact('job', 'batch', 'item', 'fields', 'existing'));
+        return view('tailoring.measurements.edit', compact('job', 'batch', 'item', 'fields', 'existing', 'pieceQty'));
     }
 
     public function store(Request $request, Job $job, JobBatch $batch, JobBatchItem $item)
@@ -68,6 +89,10 @@ class MeasurementEntryController extends Controller
         $fields = $item->measurementTemplate->fields;
         $fieldIds = $fields->pluck('id')->all();
 
+        // save against the original order line so all split parts share one set of measurements
+        $source = $item->groupRoot();
+        $pieceQty = $item->groupQty();
+
         $data = $request->validate([
             'measurements' => ['required', 'array'], // measurements[same|1..N][field_id] => value
             'notes' => ['nullable', 'array'],
@@ -82,7 +107,7 @@ class MeasurementEntryController extends Controller
                 return response()->json(['success' => false, 'message' => 'Please enter same measurements.'], 422);
             }
         } else {
-            for ($p = 1; $p <= $item->qty; $p++) {
+            for ($p = 1; $p <= $pieceQty; $p++) {
                 $k = (string)$p;
                 if (!isset($measurements[$k]) || !is_array($measurements[$k])) {
                     return response()->json(['success' => false, 'message' => "Please enter measurements for Piece {$p}."], 422);
@@ -100,7 +125,7 @@ class MeasurementEntryController extends Controller
                     return response()->json(['success' => false, 'message' => "{$f->label} is required."], 422);
                 }
             } else {
-                for ($p = 1; $p <= $item->qty; $p++) {
+                for ($p = 1; $p <= $pieceQty; $p++) {
                     $k = (string)$p;
                     $v = $measurements[$k][$f->id] ?? null;
                     if ($v === null || $v === '') {
@@ -110,14 +135,14 @@ class MeasurementEntryController extends Controller
             }
         }
 
-        DB::transaction(function () use ($item, $measurements, $notes, $fieldIds) {
+        DB::transaction(function () use ($item, $source, $pieceQty, $measurements, $notes, $fieldIds) {
 
             if (!$item->per_piece_measurement) {
                 // SAME
                 $values = $measurements['same'];
 
                 $set = ItemMeasurementSet::updateOrCreate(
-                    ['job_batch_item_id' => $item->id, 'piece_no' => null],
+                    ['job_batch_item_id' => $source->id, 'piece_no' => null],
                     ['captured_by' => auth()->id(), 'notes' => $notes['same'] ?? null]
                 );
 
@@ -133,12 +158,12 @@ class MeasurementEntryController extends Controller
 
             } else {
                 // PER PIECE
-                for ($p = 1; $p <= $item->qty; $p++) {
+                for ($p = 1; $p <= $pieceQty; $p++) {
                     $k = (string)$p;
                     $values = $measurements[$k];
 
                     $set = ItemMeasurementSet::updateOrCreate(
-                        ['job_batch_item_id' => $item->id, 'piece_no' => $p],
+                        ['job_batch_item_id' => $source->id, 'piece_no' => $p],
                         ['captured_by' => auth()->id(), 'notes' => $notes[$k] ?? null]
                     );
 
