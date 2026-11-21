@@ -31,6 +31,20 @@ use App\Http\Controllers\Hiring\HiringSalesReportController;
 require __DIR__ . '/auth.php';
 
 /*
+| Uploaded files (hire item photos, dress diagrams ...) live in storage/app/public
+| and are normally served through the public/storage link ("php artisan storage:link").
+| When that link is missing (shared hosting), this route serves them instead.
+*/
+Route::get('storage/{path}', function (string $path) {
+    $root = realpath(storage_path('app/public'));
+    $file = realpath($root . DIRECTORY_SEPARATOR . $path);
+
+    abort_unless($root && $file && is_file($file) && str_starts_with($file, $root . DIRECTORY_SEPARATOR), 404);
+
+    return response()->file($file, ['Cache-Control' => 'public, max-age=604800']);
+})->where('path', '.*')->name('storage.fallback');
+
+/*
 |--------------------------------------------------------------------------
 | Access control
 |--------------------------------------------------------------------------
