@@ -1219,4 +1219,5 @@
             });
         });
     </script>
+    @include('tailoring.jobs.partials.receipt_print')
 @endsection

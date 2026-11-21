@@ -261,12 +261,42 @@
                     </div>
                 </div>
 
-                {{-- GRAND TOTAL --}}
-                <div class="row g-2 mb-3">
+                {{-- GRAND TOTAL + ADVANCE PAYMENT --}}
+                <div class="row g-2 mb-3 align-items-stretch">
+                    <div class="col-md-5">
+                        <div class="total-box h-100">
+                            <div class="lbl mb-2">Advance Payment <span class="text-muted">(optional)</span></div>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <input type="number" step="0.01" min="0" name="advance_amount" id="advanceAmount"
+                                        class="form-control" value="0" placeholder="0.00">
+                                </div>
+                                <div class="col-5">
+                                    <select name="advance_method" class="form-select">
+                                        @foreach (\App\Models\JobPayment::METHODS as $key => $label)
+                                            <option value="{{ $key }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="muted-help mt-1">Customer can settle the balance at delivery.</div>
+                            <div class="text-danger small mt-1 d-none" id="advanceWarn">Advance is more than the bill total.</div>
+                        </div>
+                    </div>
+
                     <div class="col-md-4 ms-auto">
                         <div class="total-box text-end">
                             <div class="lbl">Grand Total (All Batches)</div>
                             <div class="val" id="grandTotalText">0.00</div>
+                            <div class="d-flex justify-content-between mt-2 small">
+                                <span>After discount</span><b id="netTotalText">0.00</b>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Advance</span><b id="advanceText">0.00</b>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="fw-semibold">Balance to pay</span><b class="text-danger" id="balanceText">0.00</b>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -444,7 +474,19 @@
                 total += recalcBatchTotals(b);
             });
             document.getElementById('grandTotalText').textContent = money(total);
+
+            // discount + advance -> balance the customer still has to pay
+            const discount = Number(document.querySelector('input[name="discount"]')?.value || 0);
+            const advance = Number(document.getElementById('advanceAmount')?.value || 0);
+            const net = Math.max(0, total - discount);
+            document.getElementById('netTotalText').textContent = money(net);
+            document.getElementById('advanceText').textContent = money(advance);
+            document.getElementById('balanceText').textContent = money(Math.max(0, net - advance));
+            document.getElementById('advanceWarn').classList.toggle('d-none', !(advance > net + 0.009));
         }
+
+        document.querySelector('input[name="discount"]')?.addEventListener('input', recalcGrandTotal);
+        document.getElementById('advanceAmount')?.addEventListener('input', recalcGrandTotal);
 
         // ===== hidden measurement store (REAL form inputs) =====
         function clearHiddenMeasurements(row) {
@@ -918,143 +960,8 @@
             const x = Number(n || 0);
             return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
+        // printMeasurementReceipt() lives in tailoring/jobs/partials/receipt_print.blade.php
 
-        // =====================================================================
-        // MEASUREMENT RECEIPT PRINTING (80mm thermal printer friendly)
-        // One slip per item, showing measurement values.
-        // =====================================================================
-
-        function printMeasurementReceipt(payload) {
-            const piecesHtml = (payload.pieces || []).map(piece => {
-                const rows = (piece.fields || []).map(f => `
-                    <tr>
-                        <td class="f-label">${escapeHtml(f.label)}${f.unit ? ` <span class="f-unit">(${escapeHtml(f.unit)})</span>` : ''}</td>
-                        <td class="f-value">${f.value !== null && f.value !== '' && f.value !== undefined ? escapeHtml(String(f.value)) : '-'}</td>
-                    </tr>
-                `).join('');
-
-                return `
-                    <div class="piece-block">
-                        <div class="piece-title">${escapeHtml(piece.title)}</div>
-                        <table class="meas-table">
-                            ${rows}
-                        </table>
-                        ${piece.notes ? `<div class="piece-notes">Note: ${escapeHtml(piece.notes)}</div>` : ''}
-                    </div>
-                `;
-            }).join('<div class="divider-dashed"></div>');
-
-            const now = new Date();
-            const printedAt = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-
-            const html = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Measurement Receipt</title>
-<style>
-    @page { size: 80mm auto; margin: 0; }
-    * { box-sizing: border-box; }
-    body {
-        width: 80mm;
-        margin: 0 auto;
-        padding: 4mm 4mm 8mm 4mm;
-        font-family: 'Courier New', Consolas, monospace;
-        font-size: 12px;
-        color: #000;
-        background: #fff;
-    }
-    .center { text-align: center; }
-    .bold { font-weight: 700; }
-    .shop-name { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .shop-sub { font-size: 10px; color: #333; margin-bottom: 6px; }
-    .divider-solid { border-top: 1px solid #000; margin: 6px 0; }
-    .divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
-    .meta-table { width: 100%; font-size: 12px; margin-bottom: 4px; }
-    .meta-table td { padding: 1px 0; vertical-align: top; }
-    .meta-label { width: 38%; font-weight: 700; white-space: nowrap; }
-    .meta-value { width: 62%; }
-    .section-title {
-        font-size: 13px; font-weight: 800; text-transform: uppercase;
-        letter-spacing: 0.5px; margin: 6px 0 4px 0; text-align: center;
-        background: #000; color: #fff; padding: 3px 0;
-    }
-    .piece-block { margin-bottom: 4px; }
-    .piece-title { font-weight: 700; font-size: 12.5px; margin-bottom: 3px; text-decoration: underline; }
-    .meas-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .meas-table tr { border-bottom: 1px dotted #999; }
-    .meas-table td { padding: 3px 0; }
-    .f-label { width: 65%; }
-    .f-unit { font-size: 10px; color: #444; }
-    .f-value { width: 35%; text-align: right; font-weight: 800; font-size: 13px; }
-    .piece-notes { font-size: 10.5px; font-style: italic; margin-top: 2px; color: #222; }
-    .item-notes-box { font-size: 11px; margin-top: 6px; padding: 4px; border: 1px dashed #000; }
-    .footer { margin-top: 10px; font-size: 9.5px; color: #333; text-align: center; }
-    .qty-badge { display: inline-block; border: 1px solid #000; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-</style>
-</head>
-<body>
-
-    <div class="center shop-name">${escapeHtml(COMPANY_NAME)}</div>
-    <div class="center shop-sub">Measurement Slip</div>
-
-    <div class="divider-solid"></div>
-
-    <table class="meta-table">
-        <tr>
-            <td class="meta-label">Job No</td>
-            <td class="meta-value bold">${escapeHtml(payload.job_no || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Batch No</td>
-            <td class="meta-value">${escapeHtml(payload.batch_no || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Dress</td>
-            <td class="meta-value bold">${escapeHtml(payload.dress_name || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Template</td>
-            <td class="meta-value">${escapeHtml(payload.template_name || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Qty</td>
-            <td class="meta-value"><span class="qty-badge">${escapeHtml(String(payload.qty ?? '-'))}</span></td>
-        </tr>
-    </table>
-
-    <div class="section-title">Measurements</div>
-
-    ${piecesHtml || '<div class="center" style="padding:10px 0;">No measurement data</div>'}
-
-    ${payload.item_notes ? `<div class="item-notes-box"><b>Item Notes:</b> ${escapeHtml(payload.item_notes)}</div>` : ''}
-
-    <div class="divider-dashed"></div>
-
-    <div class="footer">
-        Printed: ${escapeHtml(printedAt)}
-    </div>
-
-</body>
-</html>
-            `;
-
-            const printWin = window.open('', '_blank', 'width=400,height=600');
-            if (!printWin) {
-                alert('Please allow popups to print the receipt.');
-                return;
-            }
-
-            printWin.document.open();
-            printWin.document.write(html);
-            printWin.document.close();
-
-            printWin.onload = function() {
-                printWin.focus();
-                printWin.print();
-            };
-        }
 
         // Builds the receipt payload using the row + the modal form that was just used to save.
         // Job/Batch numbers don't exist yet at this point (job not saved), so they show
@@ -1221,174 +1128,8 @@
 
             return results;
         }
+        // printJobBill() lives in tailoring/jobs/partials/receipt_print.blade.php
 
-        // =====================================================================
-        // CUSTOMER BILL / RECEIPT PRINTING (80mm thermal printer friendly)
-        // ONE bill per job: job no, batch no, customer name/phone, dress type,
-        // qty, unit price, total price, discount, invoice no, date.
-        // =====================================================================
-
-        function printJobBill(bill) {
-            // bill shape (matches JobController::buildBillPayload()):
-            // {
-            //   invoice_no, invoice_date, job_no,
-            //   customer_name, customer_phone,
-            //   lines: [{ batch_no, dress, qty, unit_price, line_total }, ...],
-            //   sub_total, discount, grand_total
-            // }
-
-            const rowsHtml = (bill.lines || []).map(ln => `
-                <tr>
-                    <td class="b-batch">${escapeHtml(ln.batch_no || '-')}</td>
-                    <td class="b-dress">${escapeHtml(ln.dress || '-')}</td>
-                    <td class="b-qty">${escapeHtml(String(ln.qty ?? 0))}</td>
-                    <td class="b-price">${formatMoney(ln.unit_price)}</td>
-                    <td class="b-total">${formatMoney(ln.line_total)}</td>
-                </tr>
-            `).join('');
-
-            const html = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Bill ${escapeHtml(bill.invoice_no || '')}</title>
-<style>
-    @page { size: 80mm auto; margin: 0; }
-    * { box-sizing: border-box; }
-    body {
-        width: 80mm;
-        margin: 0 auto;
-        padding: 4mm 4mm 8mm 4mm;
-        font-family: 'Courier New', Consolas, monospace;
-        font-size: 12px;
-        color: #000;
-        background: #fff;
-    }
-    .center { text-align: center; }
-    .bold { font-weight: 700; }
-    .shop-name { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .shop-sub { font-size: 10px; color: #333; margin-bottom: 6px; }
-    .divider-solid { border-top: 1px solid #000; margin: 6px 0; }
-    .divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
-    .meta-table { width: 100%; font-size: 11.5px; margin-bottom: 4px; }
-    .meta-table td { padding: 1px 0; vertical-align: top; }
-    .meta-label { width: 40%; font-weight: 700; white-space: nowrap; }
-    .meta-value { width: 60%; }
-    .items-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
-    .items-table th {
-        border-bottom: 1px solid #000;
-        text-align: left;
-        padding: 3px 2px;
-        font-size: 10.5px;
-    }
-    .items-table td {
-        border-bottom: 1px dotted #999;
-        padding: 4px 2px;
-        vertical-align: top;
-    }
-    .b-qty { text-align: center; width: 10%; }
-    .b-price, .b-total { text-align: right; width: 22%; }
-    .b-dress { width: 36%; }
-    .b-batch { width: 20%; font-size: 10px; color: #444; }
-    .totals-table { width: 100%; margin-top: 6px; font-size: 12px; }
-    .totals-table td { padding: 2px 0; }
-    .totals-table .t-label { text-align: right; color: #333; width: 60%; }
-    .totals-table .t-value { text-align: right; font-weight: 700; width: 40%; }
-    .grand-row .t-label, .grand-row .t-value { font-size: 14px; font-weight: 800; }
-    .footer { margin-top: 12px; font-size: 9.5px; color: #333; text-align: center; }
-    .thanks { margin-top: 8px; text-align: center; font-size: 12px; font-weight: 700; }
-</style>
-</head>
-<body>
-
-    <div class="center shop-name">${escapeHtml(COMPANY_NAME)}</div>
-    <div class="center shop-sub">Customer Bill / Receipt</div>
-
-    <div class="divider-solid"></div>
-
-    <table class="meta-table">
-        <tr>
-            <td class="meta-label">Invoice No</td>
-            <td class="meta-value bold">${escapeHtml(bill.invoice_no || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Date</td>
-            <td class="meta-value">${escapeHtml(bill.invoice_date || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Job No</td>
-            <td class="meta-value bold">${escapeHtml(bill.job_no || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Customer</td>
-            <td class="meta-value">${escapeHtml(bill.customer_name || '-')}</td>
-        </tr>
-        <tr>
-            <td class="meta-label">Phone</td>
-            <td class="meta-value">${escapeHtml(bill.customer_phone || '-')}</td>
-        </tr>
-    </table>
-
-    <div class="divider-dashed"></div>
-
-    <table class="items-table">
-        <thead>
-            <tr>
-                <th class="b-batch">Batch</th>
-                <th class="b-dress">Dress</th>
-                <th class="b-qty">Qty</th>
-                <th class="b-price">Price</th>
-                <th class="b-total">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${rowsHtml || '<tr><td colspan="5" class="center" style="padding:8px 0;">No items</td></tr>'}
-        </tbody>
-    </table>
-
-    <table class="totals-table">
-        <tr>
-            <td class="t-label">Sub Total</td>
-            <td class="t-value">${formatMoney(bill.sub_total)}</td>
-        </tr>
-        <tr>
-            <td class="t-label">Discount</td>
-            <td class="t-value">${formatMoney(bill.discount)}</td>
-        </tr>
-        <tr class="grand-row">
-            <td class="t-label">Grand Total</td>
-            <td class="t-value">${formatMoney(bill.grand_total)}</td>
-        </tr>
-    </table>
-
-    <div class="divider-dashed"></div>
-
-    <div class="thanks">Thank You!</div>
-
-    <div class="footer">
-        Printed: ${escapeHtml(new Date().toLocaleString())}
-    </div>
-
-</body>
-</html>
-            `;
-
-            const printWin = window.open('', '_blank', 'width=400,height=600');
-            if (!printWin) {
-                alert('Please allow popups to print the bill.');
-                return;
-            }
-
-            printWin.document.open();
-            printWin.document.write(html);
-            printWin.document.close();
-
-            printWin.onload = function () {
-                printWin.focus();
-                printWin.print();
-            };
-        }
 
         // Remove any backdrop / scroll-lock left behind after closing modal + popup
         function cleanupModalLeftovers() {
@@ -1650,4 +1391,5 @@
             });
         });
     </script>
+    @include('tailoring.jobs.partials.receipt_print')
 @endsection

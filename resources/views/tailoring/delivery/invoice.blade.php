@@ -123,6 +123,11 @@
         </div>
     </div>
 
+    {{-- Settle the balance at delivery --}}
+    @canany(['payments.view', 'payments.create'])
+        @include('tailoring.jobs.partials.payments_card', ['job' => $job])
+    @endcanany
+
     <script>
         const msgBox = document.getElementById('message');
 

@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use App\Models\DressType;
 use App\Models\JobBatch;
 use App\Models\JobBatchItem;
+use App\Models\JobPayment;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use App\Models\MeasurementTemplate;
 use App\Models\Tailoring\ItemMeasurementSet;
 use App\Models\Tailoring\ItemMeasurementValue;
@@ -54,6 +57,7 @@ class JobController extends Controller
                     ->join('job_batches', 'job_batches.id', '=', 'job_batch_items.job_batch_id')
                     ->whereColumn('job_batches.job_id', 'jobs.id'),
             ])
+            ->withBillTotals()
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($w) use ($q) {
                     $w->where('job_no', 'like', "%{$q}%")
@@ -120,6 +124,8 @@ class JobController extends Controller
                 $q->orderBy('sort_order');
             },
             'batches.items.measurementSets.values',
+            'payments.receivedBy',
+            'delivery',
         ]);
 
         // ✅ Stages list (for dashboard)
@@ -212,6 +218,11 @@ class JobController extends Controller
             'due_date'    => ['required', 'date'],
             'notes'       => ['nullable', 'string'],
             'discount'    => ['nullable', 'numeric', 'min:0'],
+
+            // advance payment taken when the order is placed (optional)
+            'advance_amount' => ['nullable', 'numeric', 'min:0'],
+            'advance_method' => ['nullable', Rule::in(array_keys(JobPayment::METHODS))],
+
             // batches
             'batches'              => ['required', 'array', 'min:1'],
             'batches.*.batch_date' => ['required', 'date'],
@@ -302,6 +313,27 @@ class JobController extends Controller
                 }
             }
 
+            // advance payment
+            $advance = round((float)($data['advance_amount'] ?? 0), 2);
+            if ($advance > 0) {
+                $grandTotal = $job->grandTotal();
+                if ($advance > $grandTotal + 0.009) {
+                    throw ValidationException::withMessages([
+                        'advance_amount' => 'Advance (' . number_format($advance, 2) . ') cannot be more than the bill total (' . number_format($grandTotal, 2) . ').',
+                    ]);
+                }
+
+                JobPayment::create([
+                    'job_id'       => $job->id,
+                    'amount'       => $advance,
+                    'payment_type' => $advance >= $grandTotal - 0.009 ? 'settlement' : 'advance',
+                    'method'       => $data['advance_method'] ?? 'cash',
+                    'paid_at'      => now(),
+                    'received_by'  => auth()->id(),
+                    'notes'        => 'Paid when order was placed',
+                ]);
+            }
+
             return $job;
         });
 
@@ -311,7 +343,7 @@ class JobController extends Controller
             'data'    => [
                 'id'       => $job->id,
                 'job_no'   => $job->job_no,
-                'bill'     => $this->buildBillPayload($job->fresh(['customer', 'batches.items.dressType'])),
+                'bill'     => $this->buildBillPayload($job->fresh(['customer', 'batches.items.dressType', 'payments'])),
             ],
         ]);
     }
@@ -694,6 +726,7 @@ class JobController extends Controller
             'currentStage',
             'batches.items.dressType',
             'batches.items.measurementTemplate',
+            'payments',
         ]);
 
         // Build lines (invoice items)
@@ -742,6 +775,9 @@ class JobController extends Controller
             'subTotal' => $subTotal,
             'discount' => $discount,
             'grandTotal' => $grandTotal,
+            'payments' => $job->payments,
+            'paidTotal' => (float)$job->payments->sum('amount'),
+            'balance' => round($grandTotal - (float)$job->payments->sum('amount'), 2),
         ])->setPaper('a4');
 
         return $pdf->stream($invoiceNo . '.pdf'); // open in browser
@@ -796,6 +832,7 @@ class JobController extends Controller
         $subTotal = collect($lines)->sum('line_total');
         $discount = $job->effectiveDiscount();
         $grandTotal = max(0, $subTotal - $discount);
+        $paidTotal = (float)$job->payments->sum('amount');
 
         return [
             'invoice_no'   => 'INV-' . $job->job_no,
@@ -807,6 +844,14 @@ class JobController extends Controller
             'sub_total'    => $subTotal,
             'discount'     => $discount,
             'grand_total'  => $grandTotal,
+            'paid_total'   => $paidTotal,
+            'balance'      => round($grandTotal - $paidTotal, 2),
+            'payments'     => $job->payments->map(fn($p) => [
+                'date'       => $p->paid_at?->format('Y-m-d'),
+                'type_label' => $p->type_label,
+                'method'     => $p->method_label,
+                'amount'     => (float)$p->amount,
+            ])->values()->all(),
         ];
     }
 
@@ -816,7 +861,7 @@ class JobController extends Controller
      */
     public function billData(Job $job)
     {
-        $job->load(['customer', 'batches.items.dressType']);
+        $job->load(['customer', 'batches.items.dressType', 'payments']);
 
         return response()->json([
             'success' => true,

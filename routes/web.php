@@ -22,6 +22,7 @@ use App\Http\Controllers\Tailoring\HandoverController;
 use App\Http\Controllers\Tailoring\DeliveryController;
 use App\Http\Controllers\Tailoring\WorkQueueController;
 use App\Http\Controllers\Tailoring\TailoringReportController;
+use App\Http\Controllers\Tailoring\JobPaymentController;
 use App\Http\Controllers\Hiring\HireItemController;
 use App\Http\Controllers\Hiring\HireAgreementController;
 use App\Http\Controllers\Hiring\AvailabilityReportController;
@@ -179,6 +180,19 @@ Route::middleware(['auth'])->prefix('tailoring')->name('tailoring.')->group(func
     Route::post('/handover/{item}/complete', [HandoverController::class, 'complete'])
         ->middleware('permission:handover.complete')
         ->name('handover.complete');
+
+    // ---- Payments (advance / settle) + pending bills ----
+    Route::get('/pending-bills', [JobPaymentController::class, 'pending'])
+        ->middleware('permission:payments.view')
+        ->name('payments.pending');
+
+    Route::post('jobs/{job}/payments', [JobPaymentController::class, 'store'])
+        ->middleware('permission:payments.create')
+        ->name('payments.store');
+
+    Route::delete('payments/{payment}', [JobPaymentController::class, 'destroy'])
+        ->middleware('permission:payments.delete')
+        ->name('payments.destroy');
 
     // ---- Delivery ----
     Route::middleware('permission:delivery.view')->group(function () {

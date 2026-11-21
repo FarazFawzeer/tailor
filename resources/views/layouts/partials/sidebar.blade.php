@@ -133,66 +133,56 @@
 
     @php
         // =========================
-        // Menu: each link shows only when the user has its permission
-        // [label, route name, permission(s) "a|b", active route pattern]
+        // Menu - one click per screen. "Add / Create" lives on each list page.
+        // link:  [label, route name, permission(s) "a|b", icon, active route pattern]
+        // group: ['label', 'icon', 'id', 'links' => [[label, route, permission, active], ...]]
+        //        (a group with only one visible link is shown as a plain link)
         // =========================
         $menuSections = [
             'System Setup' => [
-                ['id' => 'sidebarUsers', 'label' => 'Users', 'icon' => 'solar:user-circle-outline', 'active' => ['admin.users.*', 'admin.roles.*'], 'links' => [
-                    // "+ Add User" is on the users list page
-                    ['View Users', 'admin.users.index', 'users.view', 'admin.users.*'],
+                ['group' => true, 'id' => 'sidebarUsers', 'label' => 'Users', 'icon' => 'solar:user-circle-outline', 'links' => [
+                    ['Users', 'admin.users.index', 'users.view', 'admin.users.*'],
                     ['Roles & Permissions', 'admin.roles.index', 'roles.manage', 'admin.roles.*'],
                 ]],
-                ['id' => 'sidebarCustomer', 'label' => 'Customer', 'icon' => 'solar:user-circle-outline', 'active' => ['customers.*'], 'links' => [
-                    ['Create', 'customers.create', 'customers.create', 'customers.create'],
-                    ['View', 'customers.index', 'customers.view', 'customers.index'],
-                ]],
-                ['id' => 'sidebarStaff', 'label' => 'Staff', 'icon' => 'solar:users-group-rounded-outline', 'active' => ['staff.*'], 'links' => [
-                    ['Create', 'staff.create', 'staff.create', 'staff.create'],
-                    ['View', 'staff.index', 'staff.view', 'staff.index'],
-                ]],
-                ['id' => 'sidebarDressTypes', 'label' => 'Dress Types', 'icon' => 'solar:t-shirt-outline', 'active' => ['dress-types.*'], 'links' => [
-                    ['Create', 'dress-types.create', 'dress_types.create', 'dress-types.create'],
-                    ['View', 'dress-types.index', 'dress_types.view', 'dress-types.index'],
-                ]],
-                ['id' => 'sidebarMeasurementTemplates', 'label' => 'Measure Templates', 'icon' => 'solar:ruler-angular-outline', 'active' => ['measurement-templates.*'], 'links' => [
-                    ['Create', 'measurement-templates.create', 'measurement_templates.create', 'measurement-templates.create'],
-                    ['View', 'measurement-templates.index', 'measurement_templates.view', 'measurement-templates.index'],
-                ]],
-                ['id' => 'sidebarWorkflowStages', 'label' => 'Workflow Stages', 'icon' => 'solar:checklist-minimalistic-outline', 'active' => ['workflow-stages.*'], 'links' => [
-                    ['Create', 'workflow-stages.create', 'workflow_stages.create', 'workflow-stages.create'],
-                    ['View', 'workflow-stages.index', 'workflow_stages.view', 'workflow-stages.index'],
-                ]],
+                ['Customers', 'customers.index', 'customers.view', 'solar:user-id-outline', 'customers.*'],
+                ['Staff', 'staff.index', 'staff.view', 'solar:users-group-rounded-outline', 'staff.*'],
+                ['Dress Types', 'dress-types.index', 'dress_types.view', 'solar:t-shirt-outline', 'dress-types.*'],
+                ['Measure Templates', 'measurement-templates.index', 'measurement_templates.view', 'solar:ruler-angular-outline', 'measurement-templates.*'],
+                ['Workflow Stages', 'workflow-stages.index', 'workflow_stages.view', 'solar:checklist-minimalistic-outline', 'workflow-stages.*'],
             ],
-            'Tailoring Section' => [
-                ['id' => 'sidebarTailoring', 'label' => 'Tailoring', 'icon' => 'solar:clipboard-list-outline', 'active' => ['tailoring.*'], 'links' => [
-                    ['Create Job', 'tailoring.jobs.createWizard', 'jobs.create', 'tailoring.jobs.createWizard'],
-                    ['View Jobs', 'tailoring.jobs.index', 'jobs.view', 'tailoring.jobs.index'],
-                    ['Work Queue', 'tailoring.workqueue.index', 'workqueue.view|workqueue.all_stages', 'tailoring.workqueue.*'],
-                    ['Staff Report', 'tailoring.reports.staff', 'tailoring_reports.view', 'tailoring.reports.staff'],
-                ]],
+            'Tailoring' => [
+                ['Dashboard', 'production.dashboard', 'dashboard.view', 'solar:widget-5-outline', 'production.dashboard|tailoring.production.dashboard'],
+                ['Jobs', 'tailoring.jobs.index', 'jobs.view', 'solar:clipboard-list-outline', 'tailoring.jobs.*|tailoring.measurements.*|tailoring.handover.*'],
+                ['Work Queue', 'tailoring.workqueue.index', 'workqueue.view|workqueue.all_stages', 'solar:layers-minimalistic-outline', 'tailoring.workqueue.*'],
+                ['Pending Bills', 'tailoring.payments.pending', 'payments.view', 'solar:bill-list-outline', 'tailoring.payments.*'],
+                ['Staff Report', 'tailoring.reports.staff', 'tailoring_reports.view', 'solar:chart-2-outline', 'tailoring.reports.*'],
             ],
-            'Hiring Section' => [
-                ['id' => 'sidebarHiring', 'label' => 'Hiring', 'icon' => 'solar:bag-3-outline', 'active' => ['hiring.*'], 'links' => [
-                    ['Add Hire Item', 'hiring.items.create', 'hire_items.create', 'hiring.items.create'],
-                    ['View Hire Items', 'hiring.items.index', 'hire_items.view', 'hiring.items.index'],
-                    ['Create Agreement', 'hiring.agreements.create', 'hire_agreements.create', 'hiring.agreements.create'],
-                    ['View Agreements', 'hiring.agreements.index', 'hire_agreements.view', 'hiring.agreements.index'],
-                    ['Hiring Sales Report', 'hiring.reports.sales', 'hiring_reports.view', 'hiring.reports.sales'],
-                ]],
+            'Hiring' => [
+                ['Hire Items', 'hiring.items.index', 'hire_items.view', 'solar:bag-3-outline', 'hiring.items.*'],
+                ['Agreements', 'hiring.agreements.index', 'hire_agreements.view', 'solar:document-text-outline', 'hiring.agreements.*'],
+                ['Sales Report', 'hiring.reports.sales', 'hiring_reports.view', 'solar:graph-up-outline', 'hiring.reports.*'],
             ],
         ];
 
         $menuUser = auth()->user();
         $canAny = fn($perm) => collect(explode('|', $perm))->contains(fn($p) => $menuUser?->can($p));
+        $isActive = fn($pattern) => request()->routeIs(...explode('|', $pattern));
 
-        // keep only the links (and groups / sections) this user is allowed to see
+        // keep only what this user may open; single-link groups become plain links
         $visibleSections = [];
-        foreach ($menuSections as $sectionTitle => $groups) {
-            foreach ($groups as $group) {
-                $group['links'] = array_values(array_filter($group['links'], fn($l) => $canAny($l[2])));
-                if ($group['links']) {
-                    $visibleSections[$sectionTitle][] = $group;
+        foreach ($menuSections as $sectionTitle => $entries) {
+            foreach ($entries as $entry) {
+                if (!empty($entry['group'])) {
+                    $links = array_values(array_filter($entry['links'], fn($l) => $canAny($l[2])));
+                    if (count($links) > 1) {
+                        $entry['links'] = $links;
+                        $visibleSections[$sectionTitle][] = $entry;
+                    } elseif (count($links) === 1) {
+                        [$label, $routeName, $perm, $active] = $links[0];
+                        $visibleSections[$sectionTitle][] = [$label, $routeName, $perm, $entry['icon'], $active];
+                    }
+                } elseif ($canAny($entry[2])) {
+                    $visibleSections[$sectionTitle][] = $entry;
                 }
             }
         }
@@ -201,37 +191,48 @@
     <div class="scrollbar" data-simplebar>
         <ul class="navbar-nav" id="navbar-nav">
 
-            @foreach ($visibleSections as $sectionTitle => $groups)
+            @foreach ($visibleSections as $sectionTitle => $entries)
                 @if (!$loop->first)
                     <div class="menu-divider"></div>
                 @endif
 
                 <li class="menu-title section-title">{{ $sectionTitle }}</li>
 
-                @foreach ($groups as $group)
-                    @php $groupActive = request()->routeIs(...$group['active']); @endphp
-                    <li class="nav-item {{ $groupActive ? 'section-active' : '' }}">
-                        <a class="nav-link menu-arrow" href="#{{ $group['id'] }}" data-bs-toggle="collapse" role="button"
-                            aria-expanded="{{ $groupActive ? 'true' : 'false' }}" aria-controls="{{ $group['id'] }}">
-                            <span class="nav-icon">
-                                <iconify-icon icon="{{ $group['icon'] }}"></iconify-icon>
-                            </span>
-                            <span class="nav-text"> {{ $group['label'] }}</span>
-                        </a>
+                @foreach ($entries as $entry)
+                    @if (!empty($entry['group']))
+                        @php $groupActive = collect($entry['links'])->contains(fn($l) => $isActive($l[3])); @endphp
+                        <li class="nav-item {{ $groupActive ? 'section-active' : '' }}">
+                            <a class="nav-link menu-arrow" href="#{{ $entry['id'] }}" data-bs-toggle="collapse" role="button"
+                                aria-expanded="{{ $groupActive ? 'true' : 'false' }}" aria-controls="{{ $entry['id'] }}">
+                                <span class="nav-icon">
+                                    <iconify-icon icon="{{ $entry['icon'] }}"></iconify-icon>
+                                </span>
+                                <span class="nav-text"> {{ $entry['label'] }}</span>
+                            </a>
 
-                        <div class="collapse {{ $groupActive ? 'show' : '' }}" id="{{ $group['id'] }}">
-                            <ul class="nav sub-navbar-nav">
-                                @foreach ($group['links'] as $link)
-                                    <li class="sub-nav-item">
-                                        <a class="sub-nav-link {{ request()->routeIs($link[3]) ? 'active' : '' }}"
-                                            href="{{ route($link[1]) }}">
-                                            {{ $link[0] }}
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </li>
+                            <div class="collapse {{ $groupActive ? 'show' : '' }}" id="{{ $entry['id'] }}">
+                                <ul class="nav sub-navbar-nav">
+                                    @foreach ($entry['links'] as $link)
+                                        <li class="sub-nav-item">
+                                            <a class="sub-nav-link {{ $isActive($link[3]) ? 'active' : '' }}"
+                                                href="{{ route($link[1]) }}">
+                                                {{ $link[0] }}
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </li>
+                    @else
+                        <li class="nav-item">
+                            <a class="nav-link {{ $isActive($entry[4]) ? 'active' : '' }}" href="{{ route($entry[1]) }}">
+                                <span class="nav-icon">
+                                    <iconify-icon icon="{{ $entry[3] }}"></iconify-icon>
+                                </span>
+                                <span class="nav-text"> {{ $entry[0] }}</span>
+                            </a>
+                        </li>
+                    @endif
                 @endforeach
 
                 {{-- PROFILE (everyone), at the end of the first section --}}

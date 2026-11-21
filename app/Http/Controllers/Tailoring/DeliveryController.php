@@ -37,6 +37,7 @@ class DeliveryController extends Controller
             'customer',
             'delivery',
             'batches.items.dressType',
+            'payments.receivedBy',
         ]);
 
         // calculate totals from items
@@ -122,7 +123,7 @@ class DeliveryController extends Controller
 
     public function print(Job $job)
     {
-        $job->load(['customer', 'delivery', 'batches.items.dressType']);
+        $job->load(['customer', 'delivery', 'batches.items.dressType', 'payments']);
 
         $items = $job->batches->flatMap(fn($b) => $b->items);
 

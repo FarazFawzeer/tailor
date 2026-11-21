@@ -146,6 +146,20 @@
                         <td class="label" style="font-size: 13px;"><b>Grand Total</b></td>
                         <td class="val" style="font-size: 13px;"><b>{{ number_format((float)$grandTotal, 2) }}</b></td>
                     </tr>
+                    @foreach ($payments ?? [] as $p)
+                        <tr>
+                            <td class="label">{{ $p->type_label }} ({{ $p->paid_at?->format('d M Y') }})</td>
+                            <td class="val">{{ number_format((float)$p->amount, 2) }}</td>
+                        </tr>
+                    @endforeach
+                    <tr>
+                        <td class="label">Total Paid</td>
+                        <td class="val">{{ number_format((float)($paidTotal ?? 0), 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label" style="font-size: 13px;"><b>{{ ($balance ?? 0) > 0.009 ? 'Balance Due' : 'Balance' }}</b></td>
+                        <td class="val" style="font-size: 13px;"><b>{{ ($balance ?? 0) > 0.009 ? number_format((float)$balance, 2) : 'PAID' }}</b></td>
+                    </tr>
                     <tr>
                         <td class="label muted">Currency</td>
                         <td class="val muted">LKR</td>

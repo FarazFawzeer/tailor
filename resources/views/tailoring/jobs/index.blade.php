@@ -165,7 +165,13 @@ Swal.fire({
                                 {{-- ✅ TOTAL AMOUNT --}}
                                 <td class="text-end">
                                     <div class="money">{{ number_format($amount, 2) }}</div>
-                                    <div class="muted-help">LKR</div>
+                                    @if ((float)$j->bill_balance > 0.009)
+                                        <span class="badge bg-danger">Balance {{ number_format((float)$j->bill_balance, 2) }}</span>
+                                    @elseif ((float)$j->bill_grand_total > 0)
+                                        <span class="badge bg-success">Paid</span>
+                                    @else
+                                        <div class="muted-help">LKR</div>
+                                    @endif
                                 </td>
 
    <td>

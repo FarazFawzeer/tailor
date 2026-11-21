@@ -71,6 +71,21 @@
             <th>Grand Total</th>
             <td class="right"><b>{{ number_format($grandTotal, 2) }}</b></td>
         </tr>
+        @php $printPaid = (float)$job->payments->sum('amount'); $printBalance = round($grandTotal - $printPaid, 2); @endphp
+        @foreach ($job->payments as $p)
+            <tr>
+                <th>{{ $p->type_label }} ({{ $p->paid_at?->format('d M Y') }})</th>
+                <td class="right">{{ number_format((float)$p->amount, 2) }}</td>
+            </tr>
+        @endforeach
+        <tr>
+            <th>Total Paid</th>
+            <td class="right">{{ number_format($printPaid, 2) }}</td>
+        </tr>
+        <tr>
+            <th>{{ $printBalance > 0.009 ? 'Balance Due' : 'Balance' }}</th>
+            <td class="right"><b>{{ $printBalance > 0.009 ? number_format($printBalance, 2) : 'PAID' }}</b></td>
+        </tr>
     </table>
 
     @if($job->delivery)

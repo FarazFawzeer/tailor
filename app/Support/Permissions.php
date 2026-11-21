@@ -43,6 +43,7 @@ class Permissions
             'workqueue' => ['label' => 'Work Queue', 'section' => 'Tailoring', 'actions' => ['view' => 'View Own Stage', 'all_stages' => 'View All Stages']],
             'delivery' => ['label' => 'Delivery & Invoice', 'section' => 'Tailoring', 'actions' => ['view' => 'View', 'manage' => 'Update Prices / Deliver']],
             'tailoring_reports' => ['label' => 'Tailoring Reports', 'section' => 'Tailoring', 'actions' => ['view' => 'View']],
+            'payments' => ['label' => 'Payments & Pending Bills', 'section' => 'Tailoring', 'actions' => ['view' => 'View Pending Bills', 'create' => 'Receive Payment', 'delete' => 'Delete Payment']],
 
             // Hiring
             'hire_items' => ['label' => 'Hire Items', 'section' => 'Hiring', 'actions' => self::CRUD],
@@ -92,6 +93,7 @@ class Permissions
             || str_starts_with($p, 'workqueue.')
             || str_starts_with($p, 'delivery.')
             || str_starts_with($p, 'tailoring_reports.')
+            || str_starts_with($p, 'payments.')
             || str_starts_with($p, 'hire_items.')
             || str_starts_with($p, 'hire_agreements.')
             || str_starts_with($p, 'hiring_availability.')
